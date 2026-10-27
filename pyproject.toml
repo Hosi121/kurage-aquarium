@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kurage-aquarium"
+version = "0.1.0"
+description = "Procedural jellyfish rendered as colored Braille dots and animated terminal backgrounds"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Hosi121"}]
+dependencies = ["numpy>=1.24", "Pillow>=10"]
+
+[project.urls]
+Repository = "https://github.com/Hosi121/kurage-aquarium"
+
+[project.scripts]
+kurage = "kurage_aquarium.renderer:main"
+kurage-export = "kurage_aquarium.export:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

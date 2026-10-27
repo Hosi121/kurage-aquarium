@@ -1,0 +1,6 @@
+{
+    "backgroundImage": "C:\\path\\to\\aquarium.gif",
+    "backgroundImageOpacity": 0.7,
+    "backgroundImageStretchMode": "uniformToFill",
+    "backgroundImageAlignment": "center"
+}
