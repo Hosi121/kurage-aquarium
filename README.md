@@ -4,7 +4,7 @@
 [![Latest tag](https://img.shields.io/github/v/tag/Hosi121/kurage-aquarium)](https://github.com/Hosi121/kurage-aquarium/tags)
 
 Procedural jellyfish drawn with colored Braille dots. Preview a jellyfish in your
-terminal, or export a looping aquarium GIF for a Windows Terminal background.
+terminal, or use a looping aquarium GIF as a Windows Terminal or WezTerm background.
 
 ![Animated aquarium preview](assets/preview.gif)
 
@@ -13,7 +13,29 @@ Each bell points along its path, contracts to advance, and leaves its filaments
 following earlier positions and orientations. The motion is a visual
 approximation, not a fluid simulation.
 
-## Install
+## Use a pre-rendered background
+
+Playback does not need Python or FFmpeg. Download the full-size GIF or
+`kurage-wezterm.tar.gz` from the
+[v0.2.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.2.0).
+
+- **macOS / Ubuntu / Linux:** follow the [WezTerm setup guide](docs/wezterm.md).
+  The bundle includes the GIF, a reusable background module, and a configuration
+  for trying it in a separate window. The image is centered and has 70% opacity.
+- **Windows Terminal:** download `aquarium.gif` and use the
+  [profile settings below](#windows-terminal).
+
+| Terminal | Background setup | Validation |
+| --- | --- | --- |
+| Windows Terminal | Animated GIF; [settings example](examples/windows-terminal.json) | Used on Windows through WSL |
+| WezTerm on macOS / Linux | Animated GIF; [Lua module](examples/kurage-background.lua) | Configuration checked with Linux WezTerm; macOS GUI playback unverified |
+| GNOME Terminal / macOS Terminal | WezTerm configuration does not apply | No animated-background integration provided |
+
+WezTerm animates background GIFs while the window has focus, as described in its
+[background documentation](https://wezterm.org/config/lua/config/background.html).
+This integration does not modify your default terminal or existing settings.
+
+## Generate an animation or develop
 
 Python 3.10 or later is required. GIF export also requires FFmpeg and a font
 containing Braille glyphs. Development and export have been tested on Ubuntu/WSL
@@ -138,6 +160,11 @@ These keys are also available in [examples/windows-terminal.json](examples/windo
 `backgroundImageOpacity` controls the image's strength; it does not change the
 window's overall transparency. The example does not install or change settings
 automatically.
+
+### WezTerm
+
+The same GIF works with WezTerm on macOS and Linux. See the
+[setup guide](docs/wezterm.md) and [configuration example](examples/wezterm.lua).
 
 ## How it works
 
