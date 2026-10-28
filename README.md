@@ -1,5 +1,8 @@
 # Kurage Aquarium
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Latest tag](https://img.shields.io/github/v/tag/Hosi121/kurage-aquarium)](https://github.com/Hosi121/kurage-aquarium/tags)
+
 Procedural jellyfish drawn with colored Braille dots. Preview a jellyfish in your
 terminal, or export a looping aquarium GIF for a Windows Terminal background.
 
@@ -108,3 +111,7 @@ python -m unittest discover -s tests -v
 
 The checks cover forward motion, heading alignment, body-frame geometry,
 off-screen recycling, loop continuity, and the standalone renderer.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for the full text.
