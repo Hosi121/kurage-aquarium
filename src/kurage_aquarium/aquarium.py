@@ -23,6 +23,7 @@ class Drifter:
     lean: float
     spin: float
     tint: tuple
+    detail: int = 1
 
 
 # Staggered passes keep several animals visible while others enter or leave
@@ -36,12 +37,16 @@ DRIFTERS = (
     Drifter(.75, .15, .54, 1.0, 4.10, .845, .88, 3.30, 1.40, .65, (.98, 1.02, 1.05)),
     Drifter(-1.45, -1.55, .32, 7/8, 1.80, .970, .40, 2.80, .30, -1.80, (.94, 1.04, 1.08)),
     Drifter(3.55, -1.05, .39, 9/8, .75, .095, .47, .80, -.65, 1.65, (1.05, .96, 1.10)),
+    # A slow foreground pass: the bell fills nearly three quarters of the width,
+    # the long trailing anatomy extends beyond the frame like a close-up.
+    Drifter(-.45, .95, 3.20, 1/2, .65, .255, .55, .40, -1.80, .35,
+            (.98, 1.02, 1.04), detail=2),
 )
 
 
 class Aquarium:
     def __init__(self):
-        self.models = [Jellyfish(loop_period=PERIOD * d.speed) for d in DRIFTERS]
+        self.models = [Jellyfish(loop_period=PERIOD * d.speed, detail=d.detail) for d in DRIFTERS]
         self.shader = Jellyfish()
 
     def kinematics(self, index, elapsed):

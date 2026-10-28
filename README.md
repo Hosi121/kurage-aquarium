@@ -8,7 +8,11 @@ terminal, or use a looping aquarium GIF as a Windows Terminal or WezTerm backgro
 
 ![Animated aquarium preview](assets/preview.gif)
 
-The aquarium uses eight independent swimmers with staggered entrances and exits.
+The aquarium uses nine independent swimmers with staggered entrances and exits.
+One giant swims close to the viewer: its bell spans about 73% of the image width
+in the opening frame, with its trailing arms extending beyond the image. It
+pulses at half the rate of the largest ordinary swimmer. Denser samples preserve
+the fine outlines without increasing the model's total emitted light.
 Each bell points along its path, contracts to advance, and leaves its filaments
 following earlier positions and orientations. The motion is a visual
 approximation, not a fluid simulation.
@@ -17,7 +21,8 @@ approximation, not a fluid simulation.
 
 Playback does not need Python or FFmpeg. Download the full-size GIF or
 `kurage-wezterm.tar.gz` from the
-[v0.2.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.2.0).
+[v0.3.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.3.0).
+The full-size giant aquarium GIF is 21.1 MiB.
 
 - **macOS / Ubuntu / Linux:** follow the [WezTerm setup guide](docs/wezterm.md).
   The bundle includes the GIF, a reusable background module, and a configuration
@@ -93,8 +98,8 @@ cached and composited in batches. Fonts whose glyphs overlap adjacent cells use
 the original ordered drawing path. Worker light buffers pass through a bounded
 shared-memory ring rather than being serialized through process pipes.
 
-One complete default export on a WSL machine with 16 available logical CPUs
-(Python 3.12, NumPy 2.5.4, Pillow 13.0.0) measured:
+One complete export of the eight-swimmer v0.2.0 scene on a WSL machine with 16
+available logical CPUs (Python 3.12, NumPy 2.5.4, Pillow 13.0.0) measured:
 
 | Implementation | Rendering processes | Wall time |
 | --- | ---: | ---: |
@@ -120,8 +125,8 @@ resolution, frame rate, or color fidelity:
 gifsicle -O3 -Okeep-empty output/aquarium.gif -o output/aquarium-optimized.gif
 ```
 
-For the default aquarium, Gifsicle 1.98 reduced 10,222,591 bytes (9.75 MiB) to
-9,871,576 bytes (9.41 MiB), a 3.4% reduction. All 1,152 decoded RGBA frames,
+For the eight-swimmer v0.2.0 aquarium, Gifsicle 1.98 reduced 10,222,591 bytes
+(9.75 MiB) to 9,871,576 bytes (9.41 MiB), a 3.4% reduction. All 1,152 decoded RGBA frames,
 individual frame durations, and the infinite loop were identical. This extra
 pass took about 15 seconds on the benchmark machine, so it is optional and
 does not run during normal export. Keep the original until comparing sizes:
@@ -173,7 +178,8 @@ If scrolling in Codex recalls earlier prompts, see the
 - `renderer.py` builds the bell, oral arms, and filaments as 3D point samples,
   caches geometry and colors that do not change with time, and converts the
   light buffer to colored Braille or ASCII. Braille color calculations only run
-  for occupied cells; the temporal light and dot history remain intact.
+  for occupied cells; the temporal light and dot history remain intact. The
+  giant uses denser geometry with normalized light energy for close-up detail.
 - `aquarium.py` controls the swimmers' paths, speed, depth, and orientation.
   Propulsion changes progress along the same path that defines body heading.
   Filaments use delayed positions and body frames. Recycling happens beyond the
@@ -196,7 +202,8 @@ The checks cover forward motion, heading alignment, body-frame geometry,
 off-screen recycling, loop continuity, the standalone renderer, cached glyph
 equivalence, and serial/parallel output with temporal filtering.
 They also check shared-buffer ownership and cleanup on early close or worker
-failure, and batch drawing against Pillow for overlapping and clipped glyphs.
+failure, batch drawing against Pillow for overlapping and clipped glyphs, and
+consistent light and color when close-up sampling density increases.
 
 ## License
 

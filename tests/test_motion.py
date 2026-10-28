@@ -72,6 +72,15 @@ class SwimmingTests(unittest.TestCase):
                     else:
                         self.assertTrue(all(c == " " or 0x2801 <= ord(c) <= 0x28ff for c in glyphs.flat))
 
+    def test_closeup_detail_preserves_light_and_color(self):
+        ordinary, closeup = Jellyfish(), Jellyfish(detail=2)
+        for elapsed in (0, 1.6, 3.2):
+            with self.subTest(elapsed=elapsed):
+                _, reference = ordinary.points(elapsed)
+                _, detailed = closeup.points(elapsed)
+                self.assertGreater(len(detailed), 2 * len(reference))
+                np.testing.assert_allclose(detailed.sum(axis=0), reference.sum(axis=0), rtol=.01)
+
 
 if __name__ == "__main__":
     unittest.main()

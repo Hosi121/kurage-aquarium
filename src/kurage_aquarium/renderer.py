@@ -75,7 +75,7 @@ class Swimming:
 class Jellyfish:
     """Transparent surfaces and filaments, splatted between terminal cells."""
 
-    def __init__(self, *, loop_period=None):
+    def __init__(self, *, loop_period=None, detail=1):
         self.loop_period = loop_period
         self.swimming = Swimming()
         self._temporal_pixels = None
@@ -83,8 +83,8 @@ class Jellyfish:
         self._temporal_time = None
         # Stable samples make a fine mesh without frame-to-frame randomness.
         phi, theta = np.meshgrid(
-            np.linspace(0.04, math.pi / 2, 37),
-            np.linspace(0, TAU, 128, endpoint=False), indexing="ij",
+            np.linspace(0.04, math.pi / 2, 36 * detail + 1),
+            np.linspace(0, TAU, 128 * detail, endpoint=False), indexing="ij",
         )
         self.u, self.a = phi.ravel(), theta.ravel()
         self.radius = np.sin(self.u)
@@ -94,20 +94,26 @@ class Jellyfish:
         self.ribs = np.maximum(0, np.cos(self.a * 20 + self.u * 1.5)) ** 18
         self.edge = np.sin(self.u) ** 12
         self.cap_color = CYAN[None, :] * (0.80 + 0.20 * self.edge[:, None])
-        self.rim_a = np.linspace(0, TAU, 560, endpoint=False)
-        self.thread_a = np.repeat(np.linspace(0, TAU, 26, endpoint=False), 115)
-        self.thread_s = np.tile(np.linspace(0, 1, 115), 26)
+        self.rim_a = np.linspace(0, TAU, 560 * detail, endpoint=False)
+        self.rim_energy = 0.17 / detail
+        thread_steps = 114 * detail + 1
+        self.thread_a = np.repeat(np.linspace(0, TAU, 26, endpoint=False), thread_steps)
+        self.thread_s = np.tile(np.linspace(0, 1, thread_steps), 26)
         self.thread_length = 2.45 + 0.85 * (0.5 + 0.5 * np.sin(self.thread_a * 2.3 + 1))
-        s, u = np.meshgrid(np.linspace(0, 1, 170), np.linspace(-1, 1, 7), indexing="ij")
+        s, u = np.meshgrid(np.linspace(0, 1, 169 * detail + 1),
+                           np.linspace(-1, 1, 6 * detail + 1), indexing="ij")
         self.arm_s, self.arm_u = s.ravel(), u.ravel()
         angle, layer = np.meshgrid(
-            np.linspace(0, TAU, 130, endpoint=False), np.linspace(-1, 1, 7), indexing="ij",
+            np.linspace(0, TAU, 130 * detail, endpoint=False),
+            np.linspace(-1, 1, 6 * detail + 1), indexing="ij",
         )
         self.core_a, self.core_layer = angle.ravel(), layer.ravel()
         # Geometry and colors that do not depend on time are shared read-only.
         fresnel = (1 - np.abs(np.sin(self.a) * np.sin(self.u))) ** 2
         self.cap_weight = (0.032 + 0.095 * fresnel + 0.10 * self.ribs + 0.065 * self.edge)
         self.cap_weight *= np.maximum(0.12, self.radius)
+        # Close-up swimmers need more samples, with the same total light.
+        self.cap_weight *= (37 * 128) / len(self.u)
         self.cap_profile = 0.055 + 0.115 * self.radius ** 4
         self.cap_rim = 0.035 * np.cos(20 * self.a)
         self.cap_scallop = 1 + 0.023 * np.cos(20 * self.a) * self.edge
@@ -122,12 +128,14 @@ class Jellyfish:
         self.core_wave = 0.04 * np.sin(2 * a)
         self.core_color = GOLD * (1 - blush[:, None]) + ROSE * blush[:, None]
         self.core_energy = 0.115 * (1 - 0.35 * layer ** 2)
+        self.core_energy *= (130 * 7) / len(self.core_a)
         s, u = self.arm_s, self.arm_u
         self.arm_delay = 0.24 * s + 1.55 * s * s
         base = (1 - s[:, None]) * ROSE + s[:, None] * VIOLET
         warmth = 0.35 * np.exp(-s * 4.5)
         self.arm_color = base * (1 - warmth[:, None]) + GOLD * warmth[:, None]
         self.arm_fade = (1 - 0.55 * s) * (0.65 + 0.35 * np.abs(u))
+        self.arm_fade *= (170 * 7) / len(s)
         a, s = self.thread_a, self.thread_s
         self.thread_delay = 0.35 * s + 2.1 * s * s
         self.thread_cos, self.thread_sin = np.cos(a), np.sin(a)
@@ -137,6 +145,7 @@ class Jellyfish:
         self.thread_color = CYAN * (1 - s[:, None] * 0.65) + VIOLET * s[:, None] * 0.65
         self.thread_color *= 0.58 + 0.42 * shade
         self.thread_energy = (0.075 + 0.035 * np.sin(12 * s + a) ** 2) * (1 - 0.72 * s)
+        self.thread_energy *= 115 / thread_steps
 
     def angle(self, elapsed, speed):
         if self.loop_period is not None:
@@ -168,7 +177,7 @@ class Jellyfish:
             self.cap_z * profile * scallop, self.cap_color, self.cap_weight)
         rim_radius = rim_scale * self.rim_shape
         add(rim_radius * self.rim_cos, self.rim_y + rim_lift,
-            0.76 * rim_radius * self.rim_sin, CYAN, 0.17)
+            0.76 * rim_radius * self.rim_sin, CYAN, self.rim_energy)
 
         # A muted four-lobed organ is visible through the blue membrane.
         add(self.core_x, -0.26 * height + 0.045 * self.core_layer + self.core_wave,

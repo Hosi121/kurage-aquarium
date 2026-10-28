@@ -25,7 +25,7 @@ terminal application.
 ## Download the background bundle
 
 Download `kurage-wezterm.tar.gz` from the
-[v0.2.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.2.0).
+[v0.3.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.3.0).
 In the folder containing the download:
 
 ```sh
@@ -34,10 +34,9 @@ mkdir -p "$HOME/.config/kurage"
 cp kurage-wezterm/aquarium.gif kurage-wezterm/kurage-background.lua kurage-wezterm/wezterm.lua "$HOME/.config/kurage/"
 ```
 
-The bundle contains the full 1280 × 720, 30 fps, 38.4-second aquarium. The GIF is
-losslessly optimized to 9.41 MiB. It has the same decoded frames and timing as
-the normal export. The smaller GIF in the repository's `assets/` folder is a
-640 × 360, 15 fps preview.
+The bundle contains the full 1280 × 720, 30 fps, 38.4-second aquarium, including
+the giant foreground swimmer. The smaller GIF in the repository's `assets/`
+folder is a 640 × 360, 15 fps preview.
 
 If you already generated your own GIF, copy it to
 `~/.config/kurage/aquarium.gif` and copy the two Lua files from `examples/`
