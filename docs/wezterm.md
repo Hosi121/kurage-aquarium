@@ -102,6 +102,49 @@ edit `opacity = 0.7` in `kurage-background.lua` and reload your configuration.
 
 ## Troubleshooting
 
+### Scrolling in Codex recalls previous prompts
+
+If the wheel changes the input text instead of scrolling the conversation,
+the terminal may be translating wheel events into Up/Down keys. WezTerm does
+this in the alternate screen when the application has not enabled mouse
+reporting. The alternate screen also has no terminal scrollback; see the
+[WezTerm wheel behavior reference](https://wezterm.org/config/lua/config/alternate_buffer_wheel_scroll_speed.html).
+
+Run Codex in inline mode to keep the terminal's scrollback:
+
+```sh
+codex --no-alt-screen
+```
+
+To reopen a saved conversation, finish the current turn, exit Codex, then run:
+
+```sh
+codex resume --no-alt-screen
+```
+
+Select the conversation you want to continue. Using the picker avoids selecting
+another chat when several Codex sessions are running.
+
+To make this the default, set the following in Codex's `~/.codex/config.toml`.
+If a `[tui]` table already exists, add the key to that table instead of adding
+a second one:
+
+```toml
+[tui]
+alternate_screen = "never"
+```
+
+This takes effect when Codex starts again. See the
+[official Codex TUI options](https://learn.chatgpt.com/docs/config-file/config-advanced#tui-options).
+The GIF background remains active in inline mode. The Kurage background module
+only sets image layers and does not change mouse or keyboard bindings.
+
+If you are still using the early tmux sidebar setup, mouse handling must also
+be enabled in that tmux session to scroll its history. The current GIF setup
+can be used directly without the sidebar launcher.
+
+### Background setup
+
 - If WezTerm reports a missing Lua file or GIF, confirm that all three files
   are in `~/.config/kurage/`, on the computer running WezTerm. An SSH server's
   filesystem is not the local terminal's filesystem.

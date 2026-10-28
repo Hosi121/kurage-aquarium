@@ -165,6 +165,8 @@ automatically.
 
 The same GIF works with WezTerm on macOS and Linux. See the
 [setup guide](docs/wezterm.md) and [configuration example](examples/wezterm.lua).
+If scrolling in Codex recalls earlier prompts, see the
+[Codex scrollback troubleshooting steps](docs/wezterm.md#scrolling-in-codex-recalls-previous-prompts).
 
 ## How it works
 
