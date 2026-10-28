@@ -231,16 +231,21 @@ class Jellyfish:
                 )
         return pixels.reshape(height, width, 3)
 
-    def frame(self, width, height, elapsed, *, mode="braille", temporal=False):
+    def light_frame(self, width, height, elapsed, *, mode="braille"):
+        """Render light independently of the ordered temporal filter."""
         width, height = max(1, width), max(1, height)
         compact = height < 14 and width >= 30
         fine = mode != "ascii"
-        pixels = self.raster(
+        return self.raster(
             width * 2 if fine else width, height * 4 if fine else height,
             elapsed, 0.96 if fine else 0.48, compact,
             8 / 2 ** 1.6 if fine else 1,
         )
-        return self.shade(pixels, width, height, elapsed, fine=fine, temporal=temporal)
+
+    def frame(self, width, height, elapsed, *, mode="braille", temporal=False):
+        width, height = max(1, width), max(1, height)
+        pixels = self.light_frame(width, height, elapsed, mode=mode)
+        return self.shade(pixels, width, height, elapsed, fine=mode != "ascii", temporal=temporal)
 
     def shade(self, pixels, width, height, elapsed, *, fine=True, temporal=False):
         """Convert a shared light buffer into colored terminal dots."""

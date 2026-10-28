@@ -2,6 +2,12 @@
 """Render a seamless, 30 fps Windows Terminal background from the jellyfish."""
 
 import argparse
+from collections import deque
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import closing
+from itertools import islice
+import multiprocessing
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,12 +20,80 @@ from .renderer import BACKGROUND, Jellyfish
 from .aquarium import Aquarium, PERIOD as AQUARIUM_PERIOD
 
 
+class GlyphPainter:
+    """Reuse glyph coverage, preserving text blending and drawing order."""
+
+    def __init__(self, font, cell_width, cell_height, offset_x=0, size=(1280, 720)):
+        self.font = font
+        self.cell_width, self.cell_height = cell_width, cell_height
+        self.offset_x, self.size = offset_x, size
+        self.masks = {}
+
+    def draw(self, glyphs, colors):
+        image = Image.new("RGB", self.size, BACKGROUND)
+        rows = min(len(glyphs), self.size[1] // self.cell_height)
+        ys, xs = np.nonzero(glyphs[:rows] != " ")
+        for y, x in zip(ys, xs):
+            char = str(glyphs[y, x])
+            if char not in self.masks:
+                left, top, right, bottom = self.font.getbbox(char)
+                mask = Image.new("L", (right - left, bottom - top))
+                ImageDraw.Draw(mask).text((-left, -top), char, font=self.font, fill=255)
+                self.masks[char] = mask, left, top
+            mask, left, top = self.masks[char]
+            position = (self.offset_x + int(x) * self.cell_width + left,
+                        int(y) * self.cell_height + top)
+            image.paste(tuple(int(c) for c in colors[y, x]), position, mask)
+        return image
+
+
+def default_workers():
+    try:
+        available = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        available = os.cpu_count() or 1
+    return min(4, available)
+
+
+def _init_worker(single):
+    global _worker_model
+    _worker_model = Jellyfish(loop_period=19.2) if single else Aquarium()
+
+
+def _worker_light_frame(columns, rows, elapsed):
+    return _worker_model.light_frame(columns, rows, elapsed)
+
+
+def light_frames(model, columns, rows, times, workers, *, single=False):
+    """Bound in-flight buffers and deliver independent frames in time order."""
+    if workers == 1:
+        for elapsed in times:
+            yield model.light_frame(columns, rows, elapsed)
+        return
+    pool = ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
+                               initializer=_init_worker, initargs=(single,))
+    try:
+        times = iter(times)
+        pending = deque(pool.submit(_worker_light_frame, columns, rows, t)
+                        for t in islice(times, workers * 2))
+        while pending:
+            yield pending.popleft().result()
+            for t in islice(times, 1):
+                pending.append(pool.submit(_worker_light_frame, columns, rows, t))
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("--font", type=Path, help="path to a TrueType font with Braille glyphs")
     parser.add_argument("--single", action="store_true", help="export the previous single-jellyfish scene")
+    parser.add_argument("--workers", type=int, default=default_workers(),
+                        help="render processes (default: up to 4 available CPUs; use 1 for serial export)")
     args = parser.parse_args()
+    if args.workers < 1:
+        parser.error("--workers must be at least 1")
     if shutil.which("ffmpeg") is None:
         parser.error("ffmpeg is required to export GIFs; install it and make it available in PATH")
     if args.single:
@@ -37,17 +111,12 @@ def main():
     except OSError:
         parser.error("a Braille-capable font is required; install DejaVu Sans or pass --font /path/to/font.ttf")
     width, height = 1280, 720
+    painter = GlyphPainter(font, cell_width, cell_height, offset_x, (width, height))
+    shader = model.shader if isinstance(model, Aquarium) else model
 
     def image_at(t, temporal=False):
         glyphs, colors = model.frame(columns, rows, t, temporal=temporal)
-        image = Image.new("RGB", (width, height), BACKGROUND)
-        draw = ImageDraw.Draw(image)
-        for y in range(min(rows, height // cell_height)):
-            for x in range(columns):
-                if glyphs[y, x] != " ":
-                    draw.text((offset_x + x * cell_width, y * cell_height), str(glyphs[y, x]),
-                              font=font, fill=tuple(int(c) for c in colors[y, x]))
-        return image
+        return painter.draw(glyphs, colors)
 
     # Build one palette for the entire animation, keeping colors stable at
     # frame boundaries. ffmpeg encodes incrementally, without retaining every
@@ -77,13 +146,17 @@ def main():
             model.frame(columns, rows, i / 30, temporal=True)
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
         try:
-            for i in range(round(period * 30)):
-                image = image_at(i / 30, temporal=True)
-                if i == 0:
-                    image.save(args.output.with_suffix(".png"))
-                process.stdin.write(image.tobytes())
-                if i % 120 == 0:
-                    print(f"Rendered {i}/{round(period * 30)} frames", flush=True)
+            count = round(period * 30)
+            times = (i / 30 for i in range(count))
+            with closing(light_frames(model, columns, rows, times, args.workers, single=args.single)) as frames:
+                for i, pixels in enumerate(frames):
+                    glyphs, colors = shader.shade(pixels, columns, rows, i / 30, temporal=True)
+                    image = painter.draw(glyphs, colors)
+                    if i == 0:
+                        image.save(args.output.with_suffix(".png"))
+                    process.stdin.write(image.tobytes())
+                    if i % 120 == 0:
+                        print(f"Rendered {i}/{count} frames", flush=True)
             process.stdin.close()
             if process.wait() != 0:
                 raise RuntimeError("Background encoding failed")

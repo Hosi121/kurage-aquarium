@@ -57,6 +57,31 @@ The default aquarium is 1280 × 720, 30 fps, and 38.4 seconds long. Rendering ta
 time; it prints progress while FFmpeg writes the GIF. A PNG of the first frame is
 saved alongside the GIF. Once exported, playback needs no Python process.
 
+Export uses up to four CPU processes by default. To choose the process count:
+
+```sh
+kurage-export output/aquarium.gif --workers 4
+kurage-export output/aquarium.gif --workers 1
+```
+
+Independent light buffers are rendered in parallel. The temporal filter still
+runs in frame order, preserving the motion and colors. Only a bounded number of
+frames are in flight; the whole animation is not kept in memory. Glyph masks are
+cached instead of rasterizing the same characters again for each frame.
+
+One complete default export on a WSL machine with 16 available logical CPUs
+(Python 3.12, NumPy 2.5.4, Pillow 13.0.0) measured:
+
+| Implementation | Rendering processes | Wall time |
+| --- | ---: | ---: |
+| Original exporter (`v0.1.0`) | 1 | 77.79 s |
+| Parallel rendering and cached glyphs | 4 | 21.74 s |
+
+These are single runs including startup, palette creation, rendering, and GIF
+encoding, using the same 1280 × 720, 30 fps, 38.4-second scene and font. Both the
+GIF and first-frame PNG had identical SHA-256 hashes before and after. Timings
+depend on the machine; `--workers 1` is available for constrained environments.
+
 The exporter looks for DejaVu Sans. To use another font with Braille glyphs:
 
 ```sh
@@ -110,7 +135,8 @@ python -m unittest discover -s tests -v
 ```
 
 The checks cover forward motion, heading alignment, body-frame geometry,
-off-screen recycling, loop continuity, and the standalone renderer.
+off-screen recycling, loop continuity, the standalone renderer, cached glyph
+equivalence, and serial/parallel output with temporal filtering.
 
 ## License
 

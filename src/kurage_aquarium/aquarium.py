@@ -101,7 +101,8 @@ class Aquarium:
         emission *= (.88 + .12 * np.clip(z - center_z + .5, 0, 1))[:, None]
         return px, py, emission
 
-    def frame(self, width, height, elapsed, *, temporal=False):
+    def light_frame(self, width, height, elapsed):
+        """Render one light buffer without depending on preceding frames."""
         dot_width, dot_height = width * 2, height * 4
         samples = [self.projected(i, elapsed, dot_width, dot_height) for i in range(len(DRIFTERS))]
         x, y, light = (np.concatenate([p[j] for p in samples]) for j in range(3))
@@ -116,5 +117,8 @@ class Aquarium:
             for channel in range(3):
                 pixels[:, channel] += np.bincount(indices,
                     weights=light[valid, channel] * weight[valid], minlength=dot_height * dot_width)
-        pixels = pixels.reshape(dot_height, dot_width, 3)
+        return pixels.reshape(dot_height, dot_width, 3)
+
+    def frame(self, width, height, elapsed, *, temporal=False):
+        pixels = self.light_frame(width, height, elapsed)
         return self.shader.shade(pixels, width, height, elapsed, temporal=temporal)
