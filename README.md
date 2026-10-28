@@ -89,6 +89,25 @@ took 13.66 s, so the default stays at four to avoid doubling the process count
 for a small gain. Timings depend on the machine; `--workers 1` also works when
 process shared memory is unavailable.
 
+### Lossless GIF optimization
+
+If Gifsicle is installed, you can optimize an existing GIF without reducing
+resolution, frame rate, or color fidelity:
+
+```sh
+gifsicle -O3 -Okeep-empty output/aquarium.gif -o output/aquarium-optimized.gif
+```
+
+For the default aquarium, Gifsicle 1.98 reduced 10,222,591 bytes (9.75 MiB) to
+9,871,576 bytes (9.41 MiB), a 3.4% reduction. All 1,152 decoded RGBA frames,
+individual frame durations, and the infinite loop were identical. This extra
+pass took about 15 seconds on the benchmark machine, so it is optional and
+does not run during normal export. Keep the original until comparing sizes:
+optimization can sometimes make a GIF larger. See the
+[Gifsicle manual](https://www.lcdf.org/gifsicle/man.html) for details.
+
+### Font selection
+
 The exporter looks for DejaVu Sans. To use another font with Braille glyphs:
 
 ```sh
