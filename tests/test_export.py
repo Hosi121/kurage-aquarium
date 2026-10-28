@@ -1,5 +1,7 @@
 from contextlib import closing
+from multiprocessing import shared_memory
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -13,23 +15,52 @@ class ExportTests(unittest.TestCase):
     def test_cached_glyphs_match_text_drawing(self):
         glyphs = np.tile(BRAILLE.reshape(16, 16), (1, 2))
         colors = np.random.default_rng(0).integers(0, 256, (*glyphs.shape, 3), dtype=np.uint8)
-        for font_size, cell_width, cell_height in ((12, 8, 16), (14, 10, 20)):
-            with self.subTest(font_size=font_size):
-                try:
-                    font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-                except OSError:
-                    self.skipTest("DejaVu Sans is not installed")
-                painter = GlyphPainter(font, cell_width, cell_height, offset_x=-1)
-                expected = Image.new("RGB", painter.size, BACKGROUND)
-                draw = ImageDraw.Draw(expected)
-                for y, row in enumerate(glyphs):
-                    for x, char in enumerate(row):
-                        if char != " ":
-                            draw.text((-1 + x * cell_width, y * cell_height), str(char), font=font,
-                                      fill=tuple(int(c) for c in colors[y, x]))
-                # Include overlapping glyphs, image-edge clipping, and a reused cache.
-                for _ in range(2):
-                    self.assertEqual(painter.draw(glyphs, colors).tobytes(), expected.tobytes())
+        for font_size, cell_width, cell_height in ((12, 8, 16), (14, 10, 20), (18, 8, 16)):
+            for offset in (-1, 0, 40):
+                with self.subTest(font_size=font_size, offset=offset):
+                    self.check_glyph_drawing(glyphs, colors, font_size, cell_width, cell_height, offset)
+
+    def check_glyph_drawing(self, glyphs, colors, font_size, cell_width, cell_height, offset):
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+        except OSError:
+            self.skipTest("DejaVu Sans is not installed")
+        painter = GlyphPainter(font, cell_width, cell_height, offset_x=offset)
+        expected = Image.new("RGB", painter.size, BACKGROUND)
+        draw = ImageDraw.Draw(expected)
+        for y, row in enumerate(glyphs):
+            for x, char in enumerate(row):
+                if char != " ":
+                    draw.text((offset + x * cell_width, y * cell_height), str(char), font=font,
+                              fill=tuple(int(c) for c in colors[y, x]))
+        # Include overlapping glyphs, image-edge clipping, and a reused cache.
+        for _ in range(2):
+            self.assertEqual(painter.draw(glyphs, colors).tobytes(), expected.tobytes())
+
+    def test_shared_memory_cleanup_on_close_and_error(self):
+        create_memory = shared_memory.SharedMemory
+        names = []
+
+        def track_memory(*args, **kwargs):
+            memory = create_memory(*args, **kwargs)
+            if kwargs.get("create"):
+                names.append(memory.name)
+            return memory
+
+        with patch("kurage_aquarium.export.shared_memory.SharedMemory", side_effect=track_memory):
+            scene = Jellyfish(loop_period=19.2)
+            frames = light_frames(scene, 8, 5, (i/30 for i in range(20)), 2, single=True)
+            retained = next(frames)
+            expected = retained.copy()
+            frames.close()
+            np.testing.assert_array_equal(retained, expected)
+            with closing(light_frames(scene, 8, 5, [None], 2, single=True)) as failing:
+                with self.assertRaises(TypeError):
+                    next(failing)
+        self.assertEqual(len(names), 2)
+        for name in names:
+            with self.assertRaises(FileNotFoundError):
+                create_memory(name=name)
 
     def test_parallel_rendering_preserves_temporal_filter(self):
         times = [-1/30, 0, 1/30, 2/30, 38.4, 38.4 + 1/30]

@@ -62,20 +62,25 @@ class Aquarium:
         x = d.lane + d.lean * (u - .5) + d.sway * np.sin(a)
         y = bottom - travel * u
         z = d.depth + .24 * np.sin(a + .9)
-        tangent = np.stack((d.lean + math.tau * d.sway * np.cos(a),
-                            np.full_like(u, -travel),
-                            math.tau * .24 * np.cos(a + .9)), axis=-1)
-        forward = tangent / np.linalg.norm(tangent, axis=-1, keepdims=True)
-        tail = -forward
-        right = np.cross(tail, np.array((0., 0., 1.)))
-        right /= np.linalg.norm(right, axis=-1, keepdims=True)
-        normal = np.cross(right, tail)
+        tx = d.lean + math.tau * d.sway * np.cos(a)
+        tz = math.tau * .24 * np.cos(a + .9)
+        length = np.sqrt(tx * tx + travel * travel + tz * tz)
+        tail_x, tail_y, tail_z = -tx / length, travel / length, -tz / length
+        # The reference axis is (0, 0, 1). Expand the two cross products
+        # directly instead of allocating and reducing several N x 3 arrays.
+        right_length = np.sqrt(tail_y * tail_y + tail_x * tail_x)
+        right_x, right_y = tail_y / right_length, -tail_x / right_length
+        normal_x, normal_y = right_y * tail_z, -right_x * tail_z
+        normal_z = right_x * tail_y - right_y * tail_x
         spin = d.spin + .12 * np.sin(math.tau * elapsed / PERIOD + d.curve_phase)
-        c, s = np.cos(spin)[..., None], np.sin(spin)[..., None]
-        right, normal = right * c + normal * s, normal * c - right * s
-        basis = np.stack((right, tail, normal), axis=-1)
+        c, s = np.cos(spin), np.sin(spin)
+        basis = np.stack((
+            np.stack((right_x * c + normal_x * s, tail_x, normal_x * c - right_x * s), axis=-1),
+            np.stack((right_y * c + normal_y * s, tail_y, normal_y * c - right_y * s), axis=-1),
+            np.stack((normal_z * s, tail_z, normal_z * c), axis=-1),
+        ), axis=-2)
         center = np.stack((x, y, z), axis=-1)
-        velocity = tangent * du[..., None]
+        velocity = np.stack((tx, np.full_like(u, -travel), tz), axis=-1) * du[..., None]
         return center, basis, velocity
 
     def projected(self, index, elapsed, width, height):
@@ -86,8 +91,11 @@ class Aquarium:
         # A filament follows the actual past positions and orientations of
         # its bell. Its root has zero delay and stays attached during turns.
         delay = .95 * trailing
-        centers, frames, _ = self.kinematics(index, elapsed - delay)
-        world = centers + d.size * np.einsum('nij,nj->ni', frames, xyz)
+        # Bell and core samples share the same time. Evaluate each distinct
+        # delayed pose once, then restore the original point order.
+        times, inverse = np.unique(elapsed - delay, return_inverse=True)
+        centers, frames, _ = self.kinematics(index, times)
+        world = centers[inverse] + d.size * np.einsum('nij,nj->ni', frames[inverse], xyz)
         x, y, z = world.T
         perspective = 9 / (9 - z)
         pixels_per_unit = width / 10.0
@@ -106,6 +114,8 @@ class Aquarium:
         dot_width, dot_height = width * 2, height * 4
         samples = [self.projected(i, elapsed, dot_width, dot_height) for i in range(len(DRIFTERS))]
         x, y, light = (np.concatenate([p[j] for p in samples]) for j in range(3))
+        visible = (x >= -1) & (x < dot_width) & (y >= -1) & (y < dot_height)
+        x, y, light = x[visible], y[visible], light[visible]
         ix, iy = np.floor(x).astype(int), np.floor(y).astype(int)
         fx, fy = x - ix, y - iy
         pixels = np.zeros((dot_height * dot_width, 3))

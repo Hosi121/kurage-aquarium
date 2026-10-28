@@ -67,7 +67,9 @@ kurage-export output/aquarium.gif --workers 1
 Independent light buffers are rendered in parallel. The temporal filter still
 runs in frame order, preserving the motion and colors. Only a bounded number of
 frames are in flight; the whole animation is not kept in memory. Glyph masks are
-cached instead of rasterizing the same characters again for each frame.
+cached and composited in batches. Fonts whose glyphs overlap adjacent cells use
+the original ordered drawing path. Worker light buffers pass through a bounded
+shared-memory ring rather than being serialized through process pipes.
 
 One complete default export on a WSL machine with 16 available logical CPUs
 (Python 3.12, NumPy 2.5.4, Pillow 13.0.0) measured:
@@ -75,12 +77,17 @@ One complete default export on a WSL machine with 16 available logical CPUs
 | Implementation | Rendering processes | Wall time |
 | --- | ---: | ---: |
 | Original exporter (`v0.1.0`) | 1 | 77.79 s |
-| Parallel rendering and cached glyphs | 4 | 21.74 s |
+| First parallel exporter (`65e3d10`) | 4 | 20.69 s |
+| Cached geometry, sparse shading, batched glyphs, shared buffers | 4 | 14.15 s |
 
 These are single runs including startup, palette creation, rendering, and GIF
-encoding, using the same 1280 × 720, 30 fps, 38.4-second scene and font. Both the
-GIF and first-frame PNG had identical SHA-256 hashes before and after. Timings
-depend on the machine; `--workers 1` is available for constrained environments.
+encoding, using the same 1280 × 720, 30 fps, 38.4-second scene and font. The two
+parallel versions were measured consecutively; the serial result is from the
+earlier optimization pass on the same machine. Both the GIF and first-frame
+PNG had identical SHA-256 hashes across all versions. An eight-process trial
+took 13.66 s, so the default stays at four to avoid doubling the process count
+for a small gain. Timings depend on the machine; `--workers 1` also works when
+process shared memory is unavailable.
 
 The exporter looks for DejaVu Sans. To use another font with Braille glyphs:
 
@@ -116,11 +123,14 @@ automatically.
 ## How it works
 
 - `renderer.py` builds the bell, oral arms, and filaments as 3D point samples,
-  shades them, and converts the light buffer to colored Braille or ASCII.
+  caches geometry and colors that do not change with time, and converts the
+  light buffer to colored Braille or ASCII. Braille color calculations only run
+  for occupied cells; the temporal light and dot history remain intact.
 - `aquarium.py` controls the swimmers' paths, speed, depth, and orientation.
   Propulsion changes progress along the same path that defines body heading.
   Filaments use delayed positions and body frames. Recycling happens beyond the
-  viewport.
+  viewport. Points sharing a delayed pose reuse the same calculation, without
+  changing the point order used for light accumulation.
 - `export.py` draws the glyphs with Pillow and streams RGB frames to FFmpeg,
   using a shared palette for consistent GIF colors.
 
@@ -137,6 +147,8 @@ python -m unittest discover -s tests -v
 The checks cover forward motion, heading alignment, body-frame geometry,
 off-screen recycling, loop continuity, the standalone renderer, cached glyph
 equivalence, and serial/parallel output with temporal filtering.
+They also check shared-buffer ownership and cleanup on early close or worker
+failure, and batch drawing against Pillow for overlapping and clipped glyphs.
 
 ## License
 

@@ -104,6 +104,39 @@ class Jellyfish:
             np.linspace(0, TAU, 130, endpoint=False), np.linspace(-1, 1, 7), indexing="ij",
         )
         self.core_a, self.core_layer = angle.ravel(), layer.ravel()
+        # Geometry and colors that do not depend on time are shared read-only.
+        fresnel = (1 - np.abs(np.sin(self.a) * np.sin(self.u))) ** 2
+        self.cap_weight = (0.032 + 0.095 * fresnel + 0.10 * self.ribs + 0.065 * self.edge)
+        self.cap_weight *= np.maximum(0.12, self.radius)
+        self.cap_profile = 0.055 + 0.115 * self.radius ** 4
+        self.cap_rim = 0.035 * np.cos(20 * self.a)
+        self.cap_scallop = 1 + 0.023 * np.cos(20 * self.a) * self.edge
+        self.rim_shape = 1 + 0.023 * np.cos(20 * self.rim_a)
+        self.rim_y = 0.035 * np.cos(20 * self.rim_a)
+        self.rim_cos, self.rim_sin = np.cos(self.rim_a), np.sin(self.rim_a)
+        a, layer = self.core_a, self.core_layer
+        core_r = 0.20 + 0.090 * np.cos(4 * a) + 0.073 * layer
+        blush = 0.22 * (0.5 + 0.5 * np.sin(a))
+        self.core_x = core_r * np.cos(a)
+        self.core_z = 0.65 * core_r * np.sin(a)
+        self.core_wave = 0.04 * np.sin(2 * a)
+        self.core_color = GOLD * (1 - blush[:, None]) + ROSE * blush[:, None]
+        self.core_energy = 0.115 * (1 - 0.35 * layer ** 2)
+        s, u = self.arm_s, self.arm_u
+        self.arm_delay = 0.24 * s + 1.55 * s * s
+        base = (1 - s[:, None]) * ROSE + s[:, None] * VIOLET
+        warmth = 0.35 * np.exp(-s * 4.5)
+        self.arm_color = base * (1 - warmth[:, None]) + GOLD * warmth[:, None]
+        self.arm_fade = (1 - 0.55 * s) * (0.65 + 0.35 * np.abs(u))
+        a, s = self.thread_a, self.thread_s
+        self.thread_delay = 0.35 * s + 2.1 * s * s
+        self.thread_cos, self.thread_sin = np.cos(a), np.sin(a)
+        self.thread_rim = 0.035 * np.cos(20 * a)
+        self.thread_scallop = 1 + 0.023 * np.cos(20 * a) * (1 - s)
+        shade = (0.5 + 0.5 * np.sin(a + 0.7))[:, None]
+        self.thread_color = CYAN * (1 - s[:, None] * 0.65) + VIOLET * s[:, None] * 0.65
+        self.thread_color *= 0.58 + 0.42 * shade
+        self.thread_energy = (0.075 + 0.035 * np.sin(12 * s + a) ** 2) * (1 - 0.72 * s)
 
     def angle(self, elapsed, speed):
         if self.loop_period is not None:
@@ -116,7 +149,7 @@ class Jellyfish:
         height = 0.93 + 0.17 * squeeze
         rim_scale = 1.035 - 0.17 * squeeze
         rim_lift = -0.075 * squeeze
-        body_position = float(self.swimming.position(elapsed))
+        body_position = float(self.swimming.position(elapsed)) if carry_swim else 0.0
         pieces, emissions = [], []
 
         def add(x, y, z, rgb, energy):
@@ -127,31 +160,23 @@ class Jellyfish:
             emissions.append(colors * energy[:, None])
 
         # Edge light and radial ridges reveal the translucent bell's volume.
-        fresnel = (1 - np.abs(np.sin(self.a) * np.sin(self.u))) ** 2
-        weight = (0.032 + 0.095 * fresnel + 0.10 * self.ribs + 0.065 * self.edge)
-        weight *= np.maximum(0.12, self.radius)
         # The rim tucks in more than the shoulders during a squeeze.
-        profile = 1.035 - squeeze * (0.055 + 0.115 * self.radius ** 4)
-        scallop = 1 + 0.023 * np.cos(20 * self.a) * self.edge
+        profile = 1.035 - squeeze * self.cap_profile
+        scallop = self.cap_scallop
         add(self.cap_x * profile * scallop,
-            self.cap_y * height + (0.035 * np.cos(20 * self.a) + rim_lift) * self.edge,
-            self.cap_z * profile * scallop, self.cap_color, weight)
-        a = self.rim_a
-        rim_radius = rim_scale * (1 + 0.023 * np.cos(20 * a))
-        add(rim_radius * np.cos(a), 0.035 * np.cos(20 * a) + rim_lift,
-            0.76 * rim_radius * np.sin(a), CYAN, 0.17)
+            self.cap_y * height + (self.cap_rim + rim_lift) * self.edge,
+            self.cap_z * profile * scallop, self.cap_color, self.cap_weight)
+        rim_radius = rim_scale * self.rim_shape
+        add(rim_radius * self.rim_cos, self.rim_y + rim_lift,
+            0.76 * rim_radius * self.rim_sin, CYAN, 0.17)
 
         # A muted four-lobed organ is visible through the blue membrane.
-        a, layer = self.core_a, self.core_layer
-        core_r = 0.20 + 0.090 * np.cos(4 * a) + 0.073 * layer
-        blush = 0.22 * (0.5 + 0.5 * np.sin(a))
-        core_color = GOLD * (1 - blush[:, None]) + ROSE * blush[:, None]
-        add(core_r * np.cos(a), -0.26 * height + 0.045 * layer + 0.04 * np.sin(2 * a),
-            0.65 * core_r * np.sin(a), core_color, 0.115 * (1 - 0.35 * layer ** 2))
+        add(self.core_x, -0.26 * height + 0.045 * self.core_layer + self.core_wave,
+            self.core_z, self.core_color, self.core_energy)
 
         # Delayed waves make the frilled oral arms follow the bell's motion.
         s, u = self.arm_s, self.arm_u
-        delay = 0.24 * s + 1.55 * s * s
+        delay = self.arm_delay
         carried = self.swimming.position(elapsed - delay) - body_position if carry_swim else np.zeros_like(s)
         pulse = contraction(elapsed - delay)
         for arm in range(4):
@@ -167,29 +192,22 @@ class Jellyfish:
             x = axis_x + u * ribbon_width * np.cos(twist)
             z = axis_z + u * ribbon_width * np.sin(twist)
             y = 0.04 - 0.04 * pulse + s * (2.65 + arm * 0.14) + 0.025 * np.sin(fold + u * 2.2) + carried * s
-            base = (1 - s[:, None]) * ROSE + s[:, None] * VIOLET
-            warmth = 0.35 * np.exp(-s * 4.5)
-            rgb = base * (1 - warmth[:, None]) + GOLD * warmth[:, None]
             energy = 0.040 + 0.080 * (0.5 + 0.5 * np.cos(fold + u * 3)) ** 5
-            energy *= (1 - 0.55 * s) * (0.65 + 0.35 * np.abs(u))
-            add(x, y, z, rgb, energy)
+            energy *= self.arm_fade
+            add(x, y, z, self.arm_color, energy)
 
         a, s = self.thread_a, self.thread_s
-        delay = 0.35 * s + 2.1 * s * s
+        delay = self.thread_delay
         trailing_pulse = contraction(elapsed - delay)
         trailing_radius = (1.035 - 0.17 * trailing_pulse) * (1 - 0.20 * s)
-        trailing_radius *= 1 + 0.023 * np.cos(20 * a) * (1 - s)
+        trailing_radius *= self.thread_scallop
         wave = 7 * s + a * 2.5 - self.angle(elapsed, 0.40)
-        x = np.cos(a) * trailing_radius + 0.11 * np.sin(wave) * s + 0.19 * s * s
+        x = self.thread_cos * trailing_radius + 0.11 * np.sin(wave) * s + 0.19 * s * s
         depth_wave = (7 * s + a * 2.5) * 0.8 - self.angle(elapsed, 0.40 * 0.8)
-        z = 0.76 * np.sin(a) * trailing_radius + 0.10 * np.cos(depth_wave) * s
+        z = 0.76 * self.thread_sin * trailing_radius + 0.10 * np.cos(depth_wave) * s
         carried = self.swimming.position(elapsed - delay) - body_position if carry_swim else np.zeros_like(s)
-        y = s * self.thread_length + 0.035 * np.cos(20 * a) - 0.075 * trailing_pulse + carried * s
-        shade = (0.5 + 0.5 * np.sin(a + 0.7))[:, None]
-        rgb = CYAN * (1 - s[:, None] * 0.65) + VIOLET * s[:, None] * 0.65
-        rgb *= 0.58 + 0.42 * shade
-        energy = (0.075 + 0.035 * np.sin(12 * s + a) ** 2) * (1 - 0.72 * s)
-        add(x, y, z, rgb, energy)
+        y = s * self.thread_length + self.thread_rim - 0.075 * trailing_pulse + carried * s
+        add(x, y, z, self.thread_color, self.thread_energy)
         return np.concatenate(pieces), np.concatenate(emissions)
 
     def raster(self, width, height, elapsed, cell_aspect, compact, energy_gain):
@@ -259,13 +277,14 @@ class Jellyfish:
                 self._temporal_dots = None
             self._temporal_pixels = pixels
             self._temporal_time = elapsed
-        strength = pixels.max(axis=2)
+        strength = np.maximum(np.maximum(pixels[:, :, 0], pixels[:, :, 1]), pixels[:, :, 2])
         brightness = 1 - np.exp(-strength * 0.27)
-        glyphs = RAMP[np.minimum(len(RAMP) - 1, (brightness ** 0.75 * len(RAMP)).astype(int))]
-        hue = pixels / np.maximum(strength[:, :, None], 0.0001)
-        colors = hue * (44 + 180 * brightness[:, :, None] ** 0.45)
-        colors = np.clip(np.rint(colors), 0, 255).astype(np.uint8)
-        if fine:
+        if not fine:
+            glyphs = RAMP[np.minimum(len(RAMP) - 1, (brightness ** 0.75 * len(RAMP)).astype(int))]
+            hue = pixels / np.maximum(strength[:, :, None], 0.0001)
+            colors = hue * (44 + 180 * brightness[:, :, None] ** 0.45)
+            return glyphs, np.clip(np.rint(colors), 0, 255).astype(np.uint8)
+        else:
             threshold = np.tile(DITHER, ((height * 4 + 7) // 8, (width * 2 + 7) // 8))[:height * 4, :width * 2]
             if temporal and self._temporal_dots is not None:
                 # A small deadband prevents a faint point near its coverage
@@ -277,11 +296,20 @@ class Jellyfish:
             dots = active.reshape(height, 4, width, 2).transpose(0, 2, 1, 3)
             bits = np.sum(dots * DOT_BITS, axis=(2, 3))
             glyphs = BRAILLE[bits]
-            weights = (brightness.reshape(height, 4, width, 2).transpose(0, 2, 1, 3) + 0.03) * dots
-            dot_colors = colors.reshape(height, 4, width, 2, 3).transpose(0, 2, 1, 3, 4)
-            colors = np.rint(
-                np.sum(dot_colors * weights[:, :, :, :, None], axis=(2, 3))
-                / np.maximum(weights.sum(axis=(2, 3))[:, :, None], 0.0001)
+            # Empty cells have no visible color. Keep the temporal light and
+            # dot history dense, but shade only cells with at least one dot.
+            ys, xs = np.nonzero(bits)
+            cell_brightness = brightness.reshape(height, 4, width, 2).transpose(0, 2, 1, 3)[ys, xs]
+            cell_strength = strength.reshape(height, 4, width, 2).transpose(0, 2, 1, 3)[ys, xs]
+            cell_pixels = pixels.reshape(height, 4, width, 2, 3).transpose(0, 2, 1, 3, 4)[ys, xs]
+            hue = cell_pixels / np.maximum(cell_strength[:, :, :, None], 0.0001)
+            dot_colors = hue * (44 + 180 * cell_brightness[:, :, :, None] ** 0.45)
+            dot_colors = np.clip(np.rint(dot_colors), 0, 255).astype(np.uint8)
+            weights = (cell_brightness + 0.03) * dots[ys, xs]
+            colors = np.zeros((height, width, 3), dtype=np.uint8)
+            colors[ys, xs] = np.rint(
+                np.sum(dot_colors * weights[:, :, :, None], axis=(1, 2))
+                / np.maximum(weights.sum(axis=(1, 2))[:, None], 0.0001)
             ).astype(np.uint8)
         return glyphs, colors
 

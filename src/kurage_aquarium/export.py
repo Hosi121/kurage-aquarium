@@ -7,6 +7,8 @@ from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
 from itertools import islice
 import multiprocessing
+from multiprocessing import shared_memory
+from multiprocessing.util import Finalize
 import os
 from pathlib import Path
 import subprocess
@@ -16,7 +18,7 @@ import shutil
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from .renderer import BACKGROUND, Jellyfish
+from .renderer import BACKGROUND, BRAILLE, Jellyfish
 from .aquarium import Aquarium, PERIOD as AQUARIUM_PERIOD
 
 
@@ -28,19 +30,58 @@ class GlyphPainter:
         self.cell_width, self.cell_height = cell_width, cell_height
         self.offset_x, self.size = offset_x, size
         self.masks = {}
+        self.atlas = self._make_atlas()
+        if self.atlas is not None:
+            self.atlas_background = (255 - self.atlas[:, :, :, None]) * np.array(BACKGROUND, dtype=np.uint16)
+            self.canvas = np.array(Image.new("RGB", self.size, BACKGROUND))
+
+    def _mask(self, char):
+        if char not in self.masks:
+            left, top, right, bottom = self.font.getbbox(char)
+            mask = Image.new("L", (right - left, bottom - top))
+            ImageDraw.Draw(mask).text((-left, -top), char, font=self.font, fill=255)
+            self.masks[char] = mask, left, top
+        return self.masks[char]
+
+    def _make_atlas(self):
+        atlas = np.zeros((256, self.cell_height, self.cell_width), dtype=np.uint16)
+        for bits, char in enumerate(BRAILLE[1:], 1):
+            mask, left, top = self._mask(str(char))
+            ink = mask.getbbox()
+            if ink is not None and (left + ink[0] < 0 or top + ink[1] < 0
+                                    or left + ink[2] > self.cell_width
+                                    or top + ink[3] > self.cell_height):
+                # Custom fonts may overlap adjacent cells; preserve draw order.
+                return None
+            cell = Image.new("L", (self.cell_width, self.cell_height))
+            cell.paste(mask, (left, top))
+            atlas[bits] = np.asarray(cell)
+        return atlas
 
     def draw(self, glyphs, colors):
-        image = Image.new("RGB", self.size, BACKGROUND)
         rows = min(len(glyphs), self.size[1] // self.cell_height)
+        columns = glyphs.shape[1]
         ys, xs = np.nonzero(glyphs[:rows] != " ")
+        if (self.atlas is not None and self.offset_x >= 0
+                and self.offset_x + columns * self.cell_width <= self.size[0]
+                and glyphs.dtype.kind == "U" and glyphs.dtype.itemsize == 4):
+            codes = glyphs[ys, xs].view(np.uint32)
+            if np.all((codes >= 0x2801) & (codes <= 0x28ff)):
+                bits = codes - 0x2800
+                coverage = self.atlas[bits, :, :, None]
+                ink = colors[ys, xs].astype(np.uint16)[:, None, None, :]
+                # Match Pillow's 8-bit mask compositing exactly, in bulk.
+                rgb = ((self.atlas_background[bits] + coverage * ink + 127) // 255).astype(np.uint8)
+                pixels = self.canvas.copy()
+                cells = pixels[:rows * self.cell_height,
+                               self.offset_x:self.offset_x + columns * self.cell_width]
+                cells = cells.reshape(rows, self.cell_height, columns, self.cell_width, 3).transpose(0, 2, 1, 3, 4)
+                cells[ys, xs] = rgb
+                return Image.fromarray(pixels)
+        image = Image.new("RGB", self.size, BACKGROUND)
         for y, x in zip(ys, xs):
             char = str(glyphs[y, x])
-            if char not in self.masks:
-                left, top, right, bottom = self.font.getbbox(char)
-                mask = Image.new("L", (right - left, bottom - top))
-                ImageDraw.Draw(mask).text((-left, -top), char, font=self.font, fill=255)
-                self.masks[char] = mask, left, top
-            mask, left, top = self.masks[char]
+            mask, left, top = self._mask(char)
             position = (self.offset_x + int(x) * self.cell_width + left,
                         int(y) * self.cell_height + top)
             image.paste(tuple(int(c) for c in colors[y, x]), position, mask)
@@ -55,13 +96,17 @@ def default_workers():
     return min(4, available)
 
 
-def _init_worker(single):
-    global _worker_model
+def _init_worker(single, memory_name, shape):
+    global _worker_model, _worker_memory, _worker_buffers
     _worker_model = Jellyfish(loop_period=19.2) if single else Aquarium()
+    _worker_memory = shared_memory.SharedMemory(name=memory_name)
+    _worker_buffers = np.ndarray(shape, dtype=np.float64, buffer=_worker_memory.buf)
+    Finalize(None, _worker_memory.close, exitpriority=10)
 
 
-def _worker_light_frame(columns, rows, elapsed):
-    return _worker_model.light_frame(columns, rows, elapsed)
+def _worker_light_frame(columns, rows, elapsed, slot):
+    _worker_buffers[slot] = _worker_model.light_frame(columns, rows, elapsed)
+    return slot
 
 
 def light_frames(model, columns, rows, times, workers, *, single=False):
@@ -70,18 +115,34 @@ def light_frames(model, columns, rows, times, workers, *, single=False):
         for elapsed in times:
             yield model.light_frame(columns, rows, elapsed)
         return
-    pool = ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
-                               initializer=_init_worker, initargs=(single,))
+    frame_shape = (rows * 4, columns * 2, 3)
+    frame_bytes = int(np.prod(frame_shape)) * np.dtype(np.float64).itemsize
+    slots = min(workers * 2, max(1, 32 * 1024 * 1024 // frame_bytes))
+    shape = (slots, *frame_shape)
+    memory = shared_memory.SharedMemory(create=True, size=slots * frame_bytes)
+    pool = None
     try:
+        buffers = np.ndarray(shape, dtype=np.float64, buffer=memory.buf)
+        pool = ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
+                                   initializer=_init_worker, initargs=(single, memory.name, shape))
         times = iter(times)
-        pending = deque(pool.submit(_worker_light_frame, columns, rows, t)
-                        for t in islice(times, workers * 2))
+        pending = deque((slot, pool.submit(_worker_light_frame, columns, rows, t, slot))
+                        for slot, t in enumerate(islice(times, slots)))
         while pending:
-            yield pending.popleft().result()
+            slot, future = pending.popleft()
+            future.result()
+            # The caller owns its array; a reused slot cannot alter retained
+            # frames or temporal-filter history after this generator closes.
+            yield buffers[slot].copy()
             for t in islice(times, 1):
-                pending.append(pool.submit(_worker_light_frame, columns, rows, t))
+                pending.append((slot, pool.submit(_worker_light_frame, columns, rows, t, slot)))
     finally:
-        pool.shutdown(wait=True, cancel_futures=True)
+        try:
+            if pool is not None:
+                pool.shutdown(wait=True, cancel_futures=True)
+        finally:
+            memory.close()
+            memory.unlink()
 
 
 def main():
