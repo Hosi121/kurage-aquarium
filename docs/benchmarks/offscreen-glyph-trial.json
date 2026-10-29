@@ -1,0 +1,174 @@
+{
+  "baseline": "v0.4.1 / 4b1f86c",
+  "workers": 4,
+  "executables": {
+    "baseline": "5318f3a5ad5eb7d896ce1db324d1dffd4e535858ca37c7de802eb5d3be10ec67",
+    "culling": "fda778faee2e5ce2590e34edf3e2a6081124af13d2343a64536f0c2adbb3cc8d",
+    "both": "1eaa4ba1c96c969875c3885a11532b7cf8d753ca77ca7566390fc1193abc44a0"
+  },
+  "runs": [
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 18.355953928999952,
+      "cpu_seconds": 64.672864,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "culling",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 18.209658631996717,
+      "cpu_seconds": 62.215024,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "both",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 18.119506197006558,
+      "cpu_seconds": 61.85188400000001,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "culling",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 17.92516533700109,
+      "cpu_seconds": 61.97429699999998,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "both",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 18.809735674003605,
+      "cpu_seconds": 62.91737499999999,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 18.00686836701061,
+      "cpu_seconds": 64.25852300000003,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "both",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 18.54906267300248,
+      "cpu_seconds": 62.20130399999999,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 18.083367775005172,
+      "cpu_seconds": 64.192544,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "culling",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 17.957272537998506,
+      "cpu_seconds": 61.639297000000056,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 1,
+      "seconds": 7.177712585005793,
+      "cpu_seconds": 12.986832999999933,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "culling",
+      "scene": "single",
+      "run": 1,
+      "seconds": 6.899908538005548,
+      "cpu_seconds": 13.008635000000027,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "both",
+      "scene": "single",
+      "run": 1,
+      "seconds": 6.384346827006084,
+      "cpu_seconds": 12.313752000000022,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "culling",
+      "scene": "single",
+      "run": 2,
+      "seconds": 6.751372565995553,
+      "cpu_seconds": 12.839346999999975,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "both",
+      "scene": "single",
+      "run": 2,
+      "seconds": 6.969283019003342,
+      "cpu_seconds": 12.916014000000018,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 2,
+      "seconds": 6.7779472900001565,
+      "cpu_seconds": 12.806197999999881,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "both",
+      "scene": "single",
+      "run": 3,
+      "seconds": 6.598019155004295,
+      "cpu_seconds": 12.676488000000063,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 3,
+      "seconds": 6.648560421992443,
+      "cpu_seconds": 12.717816000000084,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "culling",
+      "scene": "single",
+      "run": 3,
+      "seconds": 6.833747783995932,
+      "cpu_seconds": 13.114595999999892,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    }
+  ],
+  "experiment": "conservative offscreen rejection and sparse fixed-cell painter (not adopted: no clear export latency gain)"
+}

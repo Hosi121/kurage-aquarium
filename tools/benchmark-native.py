@@ -16,6 +16,7 @@ def main():
     parser.add_argument('--binary',action='append',required=True,help='label=/path/to/executable')
     parser.add_argument('--runs',type=int,default=3)
     parser.add_argument('--workers',type=int,default=4)
+    parser.add_argument('--baseline-ref',help='source version/commit for the first executable')
     parser.add_argument('--rss',action='store_true',help='sample generator peak RSS from Linux /proc (encoder excluded)')
     parser.add_argument('--output',type=Path,default=Path('output/buffer-pipeline/benchmark.json'))
     args=parser.parse_args()
@@ -67,7 +68,7 @@ def main():
             values=[r['seconds'] for r in matching if r['implementation']==label]
             print(scene,label,'median',round(statistics.median(values),3),flush=True)
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    args.output.write_text(json.dumps({'baseline':'v0.4.0 / 709983b','workers':args.workers,
+    args.output.write_text(json.dumps({'baseline':args.baseline_ref or binaries[0][0],'workers':args.workers,
         'executables':{label:hashlib.sha256(binary.read_bytes()).hexdigest() for label,binary in binaries},
         'runs':results},indent=2)+'\n')
 
