@@ -317,7 +317,16 @@ impl Scene {
         if self.aquarium {
             let (width, height) = (columns * 2, rows * 4);
             workspace.projected.reserve(160_000);
-            for i in 0..self.models.len() {
+            for (i, model) in self.models.iter().enumerate() {
+                if crate::visibility::offscreen(
+                    &DRIFTERS[i],
+                    t,
+                    width,
+                    height,
+                    model.swimming.max_displacement(),
+                ) {
+                    continue;
+                }
                 self.projected_into(i, t, width, height, workspace);
             }
             rasterize_into(

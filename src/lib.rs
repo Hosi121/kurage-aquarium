@@ -4,6 +4,7 @@ pub mod model;
 mod pipeline;
 pub mod render;
 pub mod scene;
+mod visibility;
 
 pub type Vec3 = [f64; 3];
 pub const BACKGROUND: [u8; 3] = [4, 9, 14];

@@ -21,6 +21,7 @@ pub fn contraction(t: f64) -> f64 {
 pub struct Swimming {
     positions: Vec<f64>,
     speeds: Vec<f64>,
+    max_position: f64,
 }
 
 impl Default for Swimming {
@@ -60,11 +61,19 @@ impl Default for Swimming {
             .for_each(|v| *v = (*v - (high + low) / 2.) * gain);
         speeds.iter_mut().for_each(|v| *v *= gain);
         speeds.push(speeds[0]);
-        Self { positions, speeds }
+        let max_position = positions.iter().map(|p| p.abs()).fold(0., f64::max) + 1e-12;
+        Self {
+            positions,
+            speeds,
+            max_position,
+        }
     }
 }
 
 impl Swimming {
+    pub fn max_displacement(&self) -> f64 {
+        self.max_position
+    }
     fn interpolate(&self, data: &[f64], t: f64) -> f64 {
         let time = modulo(t, STROKE);
         let dt = STROKE / 1024.;
