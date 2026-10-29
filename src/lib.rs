@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod export;
 pub mod model;
+mod pipeline;
 pub mod render;
 pub mod scene;
 

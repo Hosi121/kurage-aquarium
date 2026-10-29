@@ -1,10 +1,10 @@
 use crate::{
     BACKGROUND,
+    pipeline::{self, RenderConfig},
     render::{Frame, Shader},
     scene::{LightWorkspace, Scene},
 };
 use freetype::{Library, face::LoadFlag};
-use rayon::prelude::*;
 use std::{
     error::Error,
     fs::File,
@@ -271,44 +271,17 @@ pub fn export(output: PathBuf, single: bool, workers: usize, font: Option<PathBu
         shader.shade_into(&mut light, columns, rows, t, false, true, &mut frame);
     }
     let count = (period * 30_f64).round() as usize;
-    let bytes = columns * 2 * rows * 4 * 3 * 8;
-    let batch = (32 * 1024 * 1024 / bytes)
-        .max(1)
-        .min(workers.saturating_mul(2));
-    let mut workspaces: Vec<_> = (0..batch.div_ceil(2))
-        .map(|_| LightWorkspace::default())
-        .collect();
-    let mut frames: Vec<_> = (0..batch).map(|_| Vec::new()).collect();
-    workspaces[0] = warmup;
-    frames[0] = light;
-    for start in (0..count).step_by(batch) {
-        if !running.load(Ordering::Relaxed) {
-            return Err("export interrupted".into());
-        }
-        let stop = (start + batch).min(count);
-        pool.install(|| {
-            frames[..stop - start]
-                .par_chunks_mut(2)
-                .zip(workspaces.par_iter_mut())
-                .enumerate()
-                .for_each(|(chunk, (buffers, workspace))| {
-                    for (offset, pixels) in buffers.iter_mut().enumerate() {
-                        let i = start + chunk * 2 + offset;
-                        scene.light_frame_into(
-                            columns,
-                            rows,
-                            i as f64 / 30.,
-                            false,
-                            workspace,
-                            pixels,
-                        );
-                    }
-                });
-        });
-        for (i, pixels) in (start..stop).zip(frames.iter_mut()) {
-            if !running.load(Ordering::Relaxed) {
-                return Err("export interrupted".into());
-            }
+    pipeline::for_each_frame(
+        &scene,
+        &pool,
+        RenderConfig {
+            columns,
+            rows,
+            count,
+        },
+        &running,
+        (warmup, light),
+        |i, pixels| {
             shader.shade_into(
                 pixels,
                 columns,
@@ -326,8 +299,9 @@ pub fn export(output: PathBuf, single: bool, workers: usize, font: Option<PathBu
             if i % 120 == 0 {
                 println!("Rendered {i}/{count} frames");
             }
-        }
-    }
+            Ok(())
+        },
+    )?;
     input.flush()?;
     drop(input);
     if !encoder.0.wait()?.success() {

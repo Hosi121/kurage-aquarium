@@ -115,13 +115,17 @@ fn equal_area_resize_resets_temporal_history() {
         };
         let ascii = case["ascii"].as_bool().unwrap();
         let mut shader = Shader::default();
+        let mut workspace = LightWorkspace::default();
+        let mut pixels = Vec::new();
+        let mut frame = kurage_aquarium::render::Frame::default();
         for expected in array(&case["frames"]) {
             let (w, h, t) = (
                 usize_value(&expected["width"]),
                 usize_value(&expected["height"]),
                 number(&expected["time"]),
             );
-            let frame = shader.shade(scene.light_frame(w, h, t, ascii), w, h, t, ascii, true);
+            scene.light_frame_into(w, h, t, ascii, &mut workspace, &mut pixels);
+            shader.shade_into(&mut pixels, w, h, t, ascii, true, &mut frame);
             assert_eq!(
                 frame.glyphs.iter().collect::<String>(),
                 expected["glyphs"].as_str().unwrap()
