@@ -99,6 +99,36 @@ fn python_points_and_pose_parity() {
 }
 
 #[test]
+fn equal_area_resize_resets_temporal_history() {
+    for case in array(&oracle()["resizes"]) {
+        let scene = match case["scene"].as_str().unwrap() {
+            "aquarium" => Scene::aquarium(),
+            "single" => Scene::single(None),
+            _ => Scene::single(Some(19.2)),
+        };
+        let ascii = case["ascii"].as_bool().unwrap();
+        let mut shader = Shader::default();
+        for expected in array(&case["frames"]) {
+            let (w, h, t) = (
+                usize_value(&expected["width"]),
+                usize_value(&expected["height"]),
+                number(&expected["time"]),
+            );
+            let frame = shader.shade(scene.light_frame(w, h, t, ascii), w, h, t, ascii, true);
+            assert_eq!(
+                frame.glyphs.iter().collect::<String>(),
+                expected["glyphs"].as_str().unwrap()
+            );
+            for (i, color) in frame.colors.iter().enumerate() {
+                let target: [u8; 3] =
+                    std::array::from_fn(|j| expected["colors"][i][j].as_u64().unwrap() as u8);
+                assert_eq!(*color, target, "{} {w}x{h} time={t}", case["scene"]);
+            }
+        }
+    }
+}
+
+#[test]
 fn test_cached_glyphs_match_text_drawing() {
     for single in [false, true] {
         let scene = if single {

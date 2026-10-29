@@ -13,6 +13,7 @@ pub struct Shader {
     previous: Vec<Vec3>,
     dots: Vec<bool>,
     time: Option<f64>,
+    shape: Option<(usize, usize, bool)>,
 }
 
 fn threshold(x: usize, y: usize) -> f64 {
@@ -37,7 +38,11 @@ impl Shader {
         let mut history = false;
         if temporal {
             let dt = self.time.map_or(0., |old| t - old);
-            if self.previous.len() == pixels.len() && dt > 0. && dt < 0.25 {
+            if self.shape == Some((width, height, ascii))
+                && self.previous.len() == pixels.len()
+                && dt > 0.
+                && dt < 0.25
+            {
                 let blend = -(-dt / 0.028).exp_m1();
                 for (p, old) in pixels.iter_mut().zip(&self.previous) {
                     for j in 0..3 {
@@ -48,6 +53,7 @@ impl Shader {
             }
             self.previous.clone_from(&pixels);
             self.time = Some(t);
+            self.shape = Some((width, height, ascii));
         }
         let count = pixels.len();
         let mut brightness = Vec::with_capacity(count);

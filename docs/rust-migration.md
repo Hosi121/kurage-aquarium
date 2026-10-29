@@ -24,6 +24,8 @@ The generated fixture records the exact Python patch version.
 - 20 frame sequences / 180 frames cover both character modes, three scene
   configurations, four viewport sizes, negative time, consecutive frames,
   gaps, repeated loop boundaries, and temporal resets.
+- Five resize sequences / 30 frames verify history resets when width and height
+  change even if the total number of cells stays the same.
 - 54 poses and sampled anatomical points check floating-point geometry.
 - Six full-resolution frames check pre-quantization RGB SHA-256 values.
 - Nine custom-font cases cover every Braille glyph, offsets, clipping, and

@@ -37,7 +37,7 @@ def main():
 
         fixtures = {"source": SOURCE, "python": sys.version.split()[0],
                     "numpy": np.__version__, "pillow": PIL.__version__,
-                    "series": [], "poses": [], "points": [], "glyphs": [], "painters": []}
+                    "series": [], "poses": [], "points": [], "glyphs": [], "painters": [], "resizes": []}
         times = [-1/30, 0., 1/30, 2/30, 1.6, 6.4, 19.2, 38.4, 38.4+1/30]
         for scene in ("aquarium", "single", "looped_single"):
             for ascii_mode in ((False,) if scene == "aquarium" else (False, True)):
@@ -55,6 +55,15 @@ def main():
                                                  "ansi": encode(frame), "ansi_delta": encode(frame, previous=previous)})
                         previous = frame
                     fixtures["series"].append(series)
+        for scene in ("aquarium", "single", "looped_single"):
+            for ascii_mode in ((False,) if scene=="aquarium" else (False,True)):
+                model=Aquarium() if scene=="aquarium" else Jellyfish(loop_period=19.2 if scene=="looped_single" else None)
+                case={"scene":scene,"ascii":ascii_mode,"frames":[]}
+                for i,(w,h) in enumerate(((38,22),(76,11),(22,38),(44,19),(80,8),(40,16))):
+                    t=i/30
+                    frame=model.frame(w,h,t,temporal=True,**({} if scene=="aquarium" else {"mode":"ascii" if ascii_mode else "braille"}))
+                    case["frames"].append({"time":t,"width":w,"height":h,"glyphs":"".join(frame[0].flat),"colors":frame[1].reshape(-1,3).tolist()})
+                fixtures["resizes"].append(case)
         aquarium = Aquarium()
         for index in range(len(DRIFTERS)):
             for t in (-.01, 0., 1.6, 9.6, 19.2, 38.4):
