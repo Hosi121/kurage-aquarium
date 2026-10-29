@@ -17,7 +17,8 @@ def main():
     windows='windows' in args.target
     suffix='.exe' if windows else ''
     files={name+suffix:root/'target'/args.target/'release'/(name+suffix) for name in ('kurage','kurage-export')}
-    for name in ('README.md','LICENSE','THIRD_PARTY_NOTICES.md'):
+    files['README.md']=root/'docs/native-README.md'
+    for name in ('LICENSE','THIRD_PARTY_NOTICES.md'):
         files[name]=root/name
     for name in ('DejaVu','FreeType'):
         files[f'licenses/{name}.txt']=root/f'assets/render/LICENSE-{name}.txt'
