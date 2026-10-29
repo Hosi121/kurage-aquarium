@@ -1,0 +1,114 @@
+{
+  "source": "c5d795a",
+  "workers": 4,
+  "runs": [
+    {
+      "implementation": "python",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 20.056640423004865,
+      "cpu_seconds": 100.251601,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "rust",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 11.721346394988359,
+      "cpu_seconds": 36.305820999999995,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "rust",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 11.423586247008643,
+      "cpu_seconds": 36.16804400000001,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "python",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 20.010212162989774,
+      "cpu_seconds": 100.383186,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "python",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 20.265703305005445,
+      "cpu_seconds": 102.16639900000001,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "rust",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 12.325596787006361,
+      "cpu_seconds": 37.95385599999997,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "python",
+      "scene": "single",
+      "run": 1,
+      "seconds": 5.572881503001554,
+      "cpu_seconds": 15.720467000000042,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "rust",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.5616359419946093,
+      "cpu_seconds": 7.092126999999948,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "rust",
+      "scene": "single",
+      "run": 2,
+      "seconds": 3.560204221997992,
+      "cpu_seconds": 6.988274000000047,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "python",
+      "scene": "single",
+      "run": 2,
+      "seconds": 5.568675832997542,
+      "cpu_seconds": 16.209744999999998,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "python",
+      "scene": "single",
+      "run": 3,
+      "seconds": 5.609254640003201,
+      "cpu_seconds": 15.70020599999998,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "rust",
+      "scene": "single",
+      "run": 3,
+      "seconds": 3.6096755050093634,
+      "cpu_seconds": 7.110678000000007,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    }
+  ]
+}

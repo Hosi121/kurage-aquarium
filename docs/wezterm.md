@@ -1,8 +1,8 @@
 # WezTerm background on macOS and Linux
 
 Use the pre-rendered aquarium with WezTerm. Playback needs WezTerm, the GIF, and
-the Lua configuration files. Python, NumPy, Pillow, and FFmpeg are only needed
-when generating a new animation.
+the Lua configuration files. Generating a new animation uses the native Rust
+generator and FFmpeg; Python is not needed.
 
 ## Install WezTerm
 

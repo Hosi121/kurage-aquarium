@@ -1,0 +1,6 @@
+[env]
+# Compile FreeType into the executable rather than requiring a system library.
+FREETYPE2_NO_PKG_CONFIG = "1"
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

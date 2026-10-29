@@ -1,210 +1,136 @@
 # Kurage Aquarium
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Latest tag](https://img.shields.io/github/v/tag/Hosi121/kurage-aquarium)](https://github.com/Hosi121/kurage-aquarium/tags)
-
-Procedural jellyfish drawn with colored Braille dots. Preview a jellyfish in your
-terminal, or use a looping aquarium GIF as a Windows Terminal or WezTerm background.
+Procedural jellyfish rendered as colored Braille dots. Use the native terminal
+viewer, or generate a looping aquarium GIF for Windows Terminal and WezTerm.
 
 ![Animated aquarium preview](assets/preview.gif)
 
-The aquarium uses nine independent swimmers with staggered entrances and exits.
-One giant swims close to the viewer: its bell spans about 73% of the image width
-in the opening frame, with its trailing arms extending beyond the image. It
-pulses at half the rate of the largest ordinary swimmer. Denser samples preserve
-the fine outlines without increasing the model's total emitted light.
-Each bell points along its path, contracts to advance, and leaves its filaments
-following earlier positions and orientations. The motion is a visual
-approximation, not a fluid simulation.
+Nine independent swimmers follow gently curving paths. A giant foreground
+jellyfish fills about 73% of the image width in the opening frame. Each bell
+points along its motion; its filaments follow earlier positions and orientations.
+Swimmers enter and leave outside the viewport. The motion is a visual
+approximation of swimming.
+
+## Install the native generator
+
+Download the archive for your OS and CPU from the
+[v0.4.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.4.0).
+It contains `kurage` and `kurage-export` (`.exe` on Windows).
+
+| OS | Archive target |
+| --- | --- |
+| Linux x86-64 | `x86_64-unknown-linux-gnu` |
+| Windows x86-64 | `x86_64-pc-windows-msvc` |
+| macOS Apple Silicon | `aarch64-apple-darwin` |
+| macOS Intel | `x86_64-apple-darwin` |
+
+Extract the archive and put the two executables in a directory in your PATH,
+or run them using their full paths. On Linux/macOS you can try `./kurage` in
+the extracted directory; on PowerShell use `.\kurage.exe`.
+
+**No Python, NumPy, Pillow, or Rust installation is needed to run the binaries.**
+GIF export requires `ffmpeg` in PATH. The default Braille glyph coverage and
+scene palettes are embedded, so a font installation is no longer required.
+FreeType is compiled in for optional custom fonts. Linux binaries are built on
+Ubuntu 22.04; platform build/test details are in GitHub Actions.
 
 ## Use a pre-rendered background
 
-Playback does not need Python or FFmpeg. Download the full-size GIF or
+If you only want the background, download `aquarium.gif` or
 `kurage-wezterm.tar.gz` from the
-[v0.3.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.3.0).
-The full-size giant aquarium GIF is 21.1 MiB.
+[background release v0.3.0](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.3.0).
+Playback needs no generator or FFmpeg. The full GIF is 21.1 MiB.
 
 - **macOS / Ubuntu / Linux:** follow the [WezTerm setup guide](docs/wezterm.md).
-  The bundle includes the GIF, a reusable background module, and a configuration
-  for trying it in a separate window. The image is centered and has 70% opacity.
-- **Windows Terminal:** download `aquarium.gif` and use the
-  [profile settings below](#windows-terminal).
+- **Windows Terminal:** use the [profile settings example](examples/windows-terminal.json).
 
-| Terminal | Background setup | Validation |
-| --- | --- | --- |
-| Windows Terminal | Animated GIF; [settings example](examples/windows-terminal.json) | Used on Windows through WSL |
-| WezTerm on macOS / Linux | Animated GIF; [Lua module](examples/kurage-background.lua) | Configuration checked with Linux WezTerm; macOS GUI playback unverified |
-| GNOME Terminal / macOS Terminal | WezTerm configuration does not apply | No animated-background integration provided |
+The background is centered at 70% opacity. WezTerm animates backgrounds while
+the window is focused; see its [background reference](https://wezterm.org/config/lua/config/background.html).
+GNOME Terminal and macOS Terminal do not use WezTerm's configuration.
+Configuration loading was checked on Linux WezTerm; native macOS GUI playback
+remains unverified. The Rust migration does not alter terminal input bindings.
+For Codex wheel scrolling, see the
+[scrollback troubleshooting steps](docs/wezterm.md#scrolling-in-codex-recalls-previous-prompts).
 
-WezTerm animates background GIFs while the window has focus, as described in its
-[background documentation](https://wezterm.org/config/lua/config/background.html).
-This integration does not modify your default terminal or existing settings.
-
-## Generate an animation or develop
-
-Python 3.10 or later is required. GIF export also requires FFmpeg and a font
-containing Braille glyphs. Development and export have been tested on Ubuntu/WSL
-with Python 3.12.
-
-On Ubuntu/WSL, install the system dependencies:
-
-```sh
-sudo apt install python3-venv ffmpeg fonts-dejavu-core
-```
-
-Clone and install:
-
-```sh
-git clone https://github.com/Hosi121/kurage-aquarium.git
-cd kurage-aquarium
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-```
-
-## Terminal preview
+## Terminal viewer
 
 ```sh
 kurage
 kurage --ascii
 kurage --static --width 52 --height 42
+kurage --static --color --time 1.6
 ```
 
-The live viewer uses 30 fps by default; press Ctrl+C to stop. Braille mode draws
-2 × 4 dots per character cell. `--ascii` selects ordinary ASCII characters.
-Redirected output is a still frame. `NO_COLOR` or `--no-color` disables ANSI colors.
+The live single-jellyfish viewer runs at 30 fps by default; Ctrl+C stops it.
+Braille draws 2 × 4 dots per character cell. `--ascii` uses ordinary ASCII.
+Redirected output is a still frame. `NO_COLOR` or `--no-color` disables ANSI
+colors. `--fps` accepts 10–60 for the live viewer.
 
-## Export a background
+## Generate a background
 
 ```sh
 kurage-export output/aquarium.gif
-```
-
-The default aquarium is 1280 × 720, 30 fps, and 38.4 seconds long. Rendering takes
-time; it prints progress while FFmpeg writes the GIF. A PNG of the first frame is
-saved alongside the GIF. Once exported, playback needs no Python process.
-
-Export uses up to four CPU processes by default. To choose the process count:
-
-```sh
 kurage-export output/aquarium.gif --workers 4
-kurage-export output/aquarium.gif --workers 1
+kurage-export output/single.gif --single
+kurage-export output/custom.gif --font /path/to/font.ttf
 ```
 
-Independent light buffers are rendered in parallel. The temporal filter still
-runs in frame order, preserving the motion and colors. Only a bounded number of
-frames are in flight; the whole animation is not kept in memory. Glyph masks are
-cached and composited in batches. Fonts whose glyphs overlap adjacent cells use
-the original ordered drawing path. Worker light buffers pass through a bounded
-shared-memory ring rather than being serialized through process pipes.
+The default aquarium is 1280 × 720, 30 fps, and 38.4 seconds long. `--single`
+generates the earlier 19.2-second single-jellyfish scene. A first-frame PNG is
+saved beside the GIF. Existing output files are overwritten.
 
-One complete export of the eight-swimmer v0.2.0 scene on a WSL machine with 16
-available logical CPUs (Python 3.12, NumPy 2.5.4, Pillow 13.0.0) measured:
+Up to four render threads are used by default. Independent light buffers are
+rendered in parallel; temporal shading and GIF input remain in frame order.
+In-flight light buffers are bounded to 32 MiB, with no process shared memory
+or Python interpreter workers. Repeated ribbon and filament calculations are
+reused. FFmpeg encodes the RGB stream using the embedded scene-wide palette.
+`--font` changes glyph rasterization while keeping that palette.
 
-| Implementation | Rendering processes | Wall time |
-| --- | ---: | ---: |
-| Original exporter (`v0.1.0`) | 1 | 77.79 s |
-| First parallel exporter (`65e3d10`) | 4 | 20.69 s |
-| Cached geometry, sparse shading, batched glyphs, shared buffers | 4 | 14.15 s |
+The default scene and glyph assets preserve the Python v0.3.0 output. Migration
+checks, exact-output comparisons, benchmark commands, and compatibility details
+are documented in [docs/rust-migration.md](docs/rust-migration.md).
 
-These are single runs including startup, palette creation, rendering, and GIF
-encoding, using the same 1280 × 720, 30 fps, 38.4-second scene and font. The two
-parallel versions were measured consecutively; the serial result is from the
-earlier optimization pass on the same machine. Both the GIF and first-frame
-PNG had identical SHA-256 hashes across all versions. An eight-process trial
-took 13.66 s, so the default stays at four to avoid doubling the process count
-for a small gain. Timings depend on the machine; `--workers 1` also works when
-process shared memory is unavailable.
-
-### Lossless GIF optimization
-
-If Gifsicle is installed, you can optimize an existing GIF without reducing
-resolution, frame rate, or color fidelity:
+For optional lossless GIF compression with Gifsicle:
 
 ```sh
 gifsicle -O3 -Okeep-empty output/aquarium.gif -o output/aquarium-optimized.gif
 ```
 
-For the eight-swimmer v0.2.0 aquarium, Gifsicle 1.98 reduced 10,222,591 bytes
-(9.75 MiB) to 9,871,576 bytes (9.41 MiB), a 3.4% reduction. All 1,152 decoded RGBA frames,
-individual frame durations, and the infinite loop were identical. This extra
-pass took about 15 seconds on the benchmark machine, so it is optional and
-does not run during normal export. Keep the original until comparing sizes:
-optimization can sometimes make a GIF larger. See the
-[Gifsicle manual](https://www.lcdf.org/gifsicle/man.html) for details.
+Compare file sizes before replacing the original. This extra pass is separate
+from normal export.
 
-### Font selection
+## Build from source
 
-The exporter looks for DejaVu Sans. To use another font with Braille glyphs:
+Install [Rust](https://rust-lang.org/learn/get-started/) and a C++ build toolchain
+for the bundled FreeType library (Ubuntu: `build-essential`; macOS: Xcode
+Command Line Tools; Windows: Visual Studio C++ Build Tools).
 
 ```sh
-kurage-export output/aquarium.gif --font /path/to/font.ttf
+git clone https://github.com/Hosi121/kurage-aquarium.git
+cd kurage-aquarium
+cargo build --locked --release --bins
+./target/release/kurage
+./target/release/kurage-export output/aquarium.gif
 ```
 
-For the earlier single-jellyfish background:
-
-```sh
-kurage-export output/single.gif --single
-```
-
-### Windows Terminal
-
-Copy the exported GIF to a Windows-accessible folder. In the desired profile in
-Windows Terminal's `settings.json`, add these settings with your image's path:
-
-```json
-{
-    "backgroundImage": "C:\\path\\to\\aquarium.gif",
-    "backgroundImageOpacity": 0.7,
-    "backgroundImageStretchMode": "uniformToFill",
-    "backgroundImageAlignment": "center"
-}
-```
-
-These keys are also available in [examples/windows-terminal.json](examples/windows-terminal.json).
-`backgroundImageOpacity` controls the image's strength; it does not change the
-window's overall transparency. The example does not install or change settings
-automatically.
-
-### WezTerm
-
-The same GIF works with WezTerm on macOS and Linux. See the
-[setup guide](docs/wezterm.md) and [configuration example](examples/wezterm.lua).
-If scrolling in Codex recalls earlier prompts, see the
-[Codex scrollback troubleshooting steps](docs/wezterm.md#scrolling-in-codex-recalls-previous-prompts).
-
-## How it works
-
-- `renderer.py` builds the bell, oral arms, and filaments as 3D point samples,
-  caches geometry and colors that do not change with time, and converts the
-  light buffer to colored Braille or ASCII. Braille color calculations only run
-  for occupied cells; the temporal light and dot history remain intact. The
-  giant uses denser geometry with normalized light energy for close-up detail.
-- `aquarium.py` controls the swimmers' paths, speed, depth, and orientation.
-  Propulsion changes progress along the same path that defines body heading.
-  Filaments use delayed positions and body frames. Recycling happens beyond the
-  viewport. Points sharing a delayed pose reuse the same calculation, without
-  changing the point order used for light accumulation.
-- `export.py` draws the glyphs with Pillow and streams RGB frames to FFmpeg,
-  using a shared palette for consistent GIF colors.
-
-The renderer and configuration live in source control. Full-size generated
-backgrounds belong in `output/`, which is ignored by Git. The checked-in preview
-is a smaller rendition of the complete loop.
+On Ubuntu, install FFmpeg separately with `sudo apt install ffmpeg`.
+The generator is entirely Rust; its build does not invoke Python. Python is
+only used by optional historical-oracle and release-packaging tools.
 
 ## Checks
 
 ```sh
-python -m unittest discover -s tests -v
+cargo fmt --all --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked --all-targets
 ```
 
-The checks cover forward motion, heading alignment, body-frame geometry,
-off-screen recycling, loop continuity, the standalone renderer, cached glyph
-equivalence, and serial/parallel output with temporal filtering.
-They also check shared-buffer ownership and cleanup on early close or worker
-failure, batch drawing against Pillow for overlapping and clipped glyphs, and
-consistent light and color when close-up sampling density increases.
+Tests compare generated Python fixtures for geometry, body heading, forward
+motion, off-screen recycling, loop continuity, temporal color and Braille/ASCII
+output, ANSI output, full-resolution image hashes, custom-font clipping, and
+parallel frame ownership. No Python is needed to run these tests.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for the full text.
+MIT. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for embedded glyph and FreeType notices.
