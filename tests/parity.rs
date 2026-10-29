@@ -2,7 +2,7 @@ use kurage_aquarium::{
     export::Painter,
     model::Jellyfish,
     render::{Shader, encode},
-    scene::{DRIFTERS, PERIOD, Scene},
+    scene::{DRIFTERS, LightWorkspace, PERIOD, Scene},
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -39,9 +39,16 @@ fn python_frame_and_ansi_parity() {
         let ascii = case["ascii"].as_bool().unwrap();
         let mut shader = Shader::default();
         let mut previous = None;
+        let mut workspace = LightWorkspace::default();
+        let mut light = Vec::new();
+        let mut reused_shader = Shader::default();
+        let mut reused_frame = kurage_aquarium::render::Frame::default();
         for expected in array(&case["frames"]) {
             let t = number(&expected["time"]);
             let actual = shader.shade(scene.light_frame(w, h, t, ascii), w, h, t, ascii, true);
+            scene.light_frame_into(w, h, t, ascii, &mut workspace, &mut light);
+            reused_shader.shade_into(&mut light, w, h, t, ascii, true, &mut reused_frame);
+            assert_eq!(actual, reused_frame);
             let glyphs: String = actual.glyphs.iter().collect();
             assert_eq!(
                 glyphs,
@@ -190,6 +197,7 @@ fn custom_fonts_overlap_and_clipping_match_pillow() {
     use kurage_aquarium::render::Frame;
     let font =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/DejaVuSans.ttf");
+    let mut image = Vec::new();
     for case in array(&oracle()["painters"]) {
         let painter = Painter::with_font(
             usize_value(&case["cell_width"]),
@@ -208,7 +216,8 @@ fn custom_fonts_overlap_and_clipping_match_pillow() {
                 .map(|v| std::array::from_fn(|j| v[j].as_u64().unwrap() as u8))
                 .collect(),
         };
-        let actual = format!("{:x}", Sha256::digest(painter.draw(&frame)));
+        painter.draw_into(&frame, &mut image);
+        let actual = format!("{:x}", Sha256::digest(&image));
         assert_eq!(
             actual,
             case["rgb_sha256"].as_str().unwrap(),

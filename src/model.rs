@@ -266,7 +266,20 @@ impl Jellyfish {
     }
 
     pub fn points(&self, t: f64, carry: bool) -> Vec<Point> {
-        let mut result = Vec::with_capacity(
+        let mut result = Vec::new();
+        self.points_into(t, carry, &mut result, &mut Vec::new());
+        result
+    }
+
+    pub fn points_into(
+        &self,
+        t: f64,
+        carry: bool,
+        result: &mut Vec<Point>,
+        pulse_cache: &mut Vec<(f64, f64)>,
+    ) {
+        result.clear();
+        result.reserve(
             self.cap.len()
                 + self.rim.len()
                 + self.core.len()
@@ -349,17 +362,15 @@ impl Jellyfish {
         }
         let angle40 = self.angle(t, 0.40);
         let angle_depth = self.angle(t, 0.40 * 0.8);
-        let pulse_cache: Vec<_> = self.threads[..self.thread_steps]
-            .iter()
-            .map(|p| {
-                let carried = if carry {
-                    self.swimming.position(t - p.delay) - body
-                } else {
-                    0.
-                };
-                (contraction(t - p.delay), carried)
-            })
-            .collect();
+        pulse_cache.clear();
+        pulse_cache.extend(self.threads[..self.thread_steps].iter().map(|p| {
+            let carried = if carry {
+                self.swimming.position(t - p.delay) - body
+            } else {
+                0.
+            };
+            (contraction(t - p.delay), carried)
+        }));
         for (i, p) in self.threads.iter().enumerate() {
             let (s, a) = (p.s, p.a);
             let (pulse, carried) = pulse_cache[i % self.thread_steps];
@@ -375,6 +386,5 @@ impl Jellyfish {
                 light: p.light,
             });
         }
-        result
     }
 }

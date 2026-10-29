@@ -1,4 +1,8 @@
-use crate::{TAU, Vec3, model::Jellyfish, modulo};
+use crate::{
+    TAU, Vec3,
+    model::{Jellyfish, Point},
+    modulo,
+};
 
 pub const PERIOD: f64 = 38.4;
 #[derive(Clone, Copy)]
@@ -163,6 +167,15 @@ pub struct Projected {
     pub light: Vec3,
 }
 
+/// One rendering worker owns and reuses these buffers across frames.
+#[derive(Default)]
+pub struct LightWorkspace {
+    points: Vec<Point>,
+    projected: Vec<Projected>,
+    pass: Vec<Vec3>,
+    pulse: Vec<(f64, f64)>,
+}
+
 impl Scene {
     pub fn aquarium() -> Self {
         Self {
@@ -228,49 +241,92 @@ impl Scene {
     }
 
     pub fn projected(&self, index: usize, t: f64, width: usize, height: usize) -> Vec<Projected> {
+        let mut workspace = LightWorkspace::default();
+        self.projected_into(index, t, width, height, &mut workspace);
+        workspace.projected
+    }
+
+    fn projected_into(
+        &self,
+        index: usize,
+        t: f64,
+        width: usize,
+        height: usize,
+        workspace: &mut LightWorkspace,
+    ) {
         let d = DRIFTERS[index];
-        let points = self.models[index].points(t * d.speed + d.pulse, false);
+        self.models[index].points_into(
+            t * d.speed + d.pulse,
+            false,
+            &mut workspace.points,
+            &mut workspace.pulse,
+        );
         let current = self.kinematics(index, t);
         let unit = width as f64 / 10.;
         let density = (unit * d.size / 11.5).powf(1.6) * (8. / 2_f64.powf(1.6));
         let fog = 0.61 + 0.35 * ((current.center[2] + 1.8) / 2.8).clamp(0., 1.);
-        points
-            .into_iter()
-            .map(|p| {
-                let delay = 0.95 * (p.xyz[1] / 3.2).clamp(0., 1.).powf(1.4);
-                let pose = if delay == 0. {
-                    current
-                } else {
-                    self.kinematics(index, t - delay)
-                };
-                let world: Vec3 = std::array::from_fn(|j| {
-                    pose.center[j]
-                        + d.size
-                            * ((pose.basis[j][0] * p.xyz[0] + pose.basis[j][1] * p.xyz[1])
-                                + pose.basis[j][2] * p.xyz[2])
-                });
-                let perspective = 9. / (9. - world[2]);
-                let highlight = 0.88 + 0.12 * (world[2] - current.center[2] + 0.5).clamp(0., 1.);
-                Projected {
-                    x: width as f64 / 2. + world[0] * perspective * unit,
-                    y: height as f64 / 2. + world[1] * perspective * unit,
-                    light: std::array::from_fn(|j| {
-                        (p.light[j] * (density * fog)) * d.tint[j] * highlight
-                    }),
-                }
-            })
-            .collect()
+        workspace.projected.extend(workspace.points.iter().map(|p| {
+            let delay = 0.95 * (p.xyz[1] / 3.2).clamp(0., 1.).powf(1.4);
+            let pose = if delay == 0. {
+                current
+            } else {
+                self.kinematics(index, t - delay)
+            };
+            let world: Vec3 = std::array::from_fn(|j| {
+                pose.center[j]
+                    + d.size
+                        * ((pose.basis[j][0] * p.xyz[0] + pose.basis[j][1] * p.xyz[1])
+                            + pose.basis[j][2] * p.xyz[2])
+            });
+            let perspective = 9. / (9. - world[2]);
+            let highlight = 0.88 + 0.12 * (world[2] - current.center[2] + 0.5).clamp(0., 1.);
+            Projected {
+                x: width as f64 / 2. + world[0] * perspective * unit,
+                y: height as f64 / 2. + world[1] * perspective * unit,
+                light: std::array::from_fn(|j| {
+                    (p.light[j] * (density * fog)) * d.tint[j] * highlight
+                }),
+            }
+        }));
     }
 
     pub fn light_frame(&self, columns: usize, rows: usize, t: f64, ascii: bool) -> Vec<Vec3> {
+        let mut pixels = Vec::new();
+        self.light_frame_into(
+            columns,
+            rows,
+            t,
+            ascii,
+            &mut LightWorkspace::default(),
+            &mut pixels,
+        );
+        pixels
+    }
+
+    pub fn light_frame_into(
+        &self,
+        columns: usize,
+        rows: usize,
+        t: f64,
+        ascii: bool,
+        workspace: &mut LightWorkspace,
+        pixels: &mut Vec<Vec3>,
+    ) {
         let (columns, rows) = (columns.max(1), rows.max(1));
+        workspace.projected.clear();
         if self.aquarium {
             let (width, height) = (columns * 2, rows * 4);
-            let mut projected = Vec::with_capacity(160_000);
+            workspace.projected.reserve(160_000);
             for i in 0..self.models.len() {
-                projected.extend(self.projected(i, t, width, height));
+                self.projected_into(i, t, width, height, workspace);
             }
-            rasterize(projected, width, height)
+            rasterize_into(
+                &mut workspace.projected,
+                width,
+                height,
+                pixels,
+                &mut workspace.pass,
+            );
         } else {
             let model = &self.models[0];
             let fine = !ascii;
@@ -296,37 +352,53 @@ impl Scene {
             let drift = model.angle(t, 0.27).sin() * scale * 0.045;
             let energy = (scale / 11.5).powf(1.6) * gain;
             let swim = model.swimming.position(t);
-            let projected = model
-                .points(t, true)
-                .into_iter()
-                .map(|p| {
-                    let x = p.xyz[0] * cy + p.xyz[2] * sy;
-                    let z = p.xyz[2] * cy - p.xyz[0] * sy;
-                    let y = p.xyz[1] + swim;
-                    let (x, y) = (x * ct + y * st, y * ct - x * st);
-                    let y = y * 0.94 + z * 0.34;
-                    let perspective = 5. / (5. - z);
-                    let highlight = 0.86 + 0.14 * (z + 0.5).clamp(0., 1.);
-                    Projected {
-                        x: (x * perspective - center_x) * scale + width as f64 * 0.5 + drift,
-                        y: (y * perspective - center_y) * scale * aspect + height as f64 * 0.5,
-                        light: p.light.map(|v| (v * energy) * highlight),
-                    }
-                })
-                .collect();
-            rasterize(projected, width, height)
+            model.points_into(t, true, &mut workspace.points, &mut workspace.pulse);
+            workspace.projected.extend(workspace.points.iter().map(|p| {
+                let x = p.xyz[0] * cy + p.xyz[2] * sy;
+                let z = p.xyz[2] * cy - p.xyz[0] * sy;
+                let y = p.xyz[1] + swim;
+                let (x, y) = (x * ct + y * st, y * ct - x * st);
+                let y = y * 0.94 + z * 0.34;
+                let perspective = 5. / (5. - z);
+                let highlight = 0.86 + 0.14 * (z + 0.5).clamp(0., 1.);
+                Projected {
+                    x: (x * perspective - center_x) * scale + width as f64 * 0.5 + drift,
+                    y: (y * perspective - center_y) * scale * aspect + height as f64 * 0.5,
+                    light: p.light.map(|v| (v * energy) * highlight),
+                }
+            }));
+            rasterize_into(
+                &mut workspace.projected,
+                width,
+                height,
+                pixels,
+                &mut workspace.pass,
+            );
         }
     }
 }
 
 pub fn rasterize(mut points: Vec<Projected>, width: usize, height: usize) -> Vec<Vec3> {
+    let mut pixels = Vec::new();
+    rasterize_into(&mut points, width, height, &mut pixels, &mut Vec::new());
+    pixels
+}
+
+fn rasterize_into(
+    points: &mut Vec<Projected>,
+    width: usize,
+    height: usize,
+    pixels: &mut Vec<Vec3>,
+    pass: &mut Vec<Vec3>,
+) {
     points.retain(|p| p.x >= -1. && p.x < width as f64 && p.y >= -1. && p.y < height as f64);
-    let mut pixels = vec![[0.; 3]; width * height];
-    let mut pass = vec![[0.; 3]; width * height];
+    pixels.resize(width * height, [0.; 3]);
+    pixels.fill([0.; 3]);
+    pass.resize(width * height, [0.; 3]);
     // Separate coverage passes preserve the source's accumulation order.
     for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
         pass.fill([0.; 3]);
-        for p in &points {
+        for p in points.iter() {
             let (ix, iy) = (p.x.floor() as isize, p.y.floor() as isize);
             let (x, y) = (ix + dx, iy + dy);
             if x < 0 || y < 0 || x >= width as isize || y >= height as isize {
@@ -340,11 +412,43 @@ pub fn rasterize(mut points: Vec<Projected>, width: usize, height: usize) -> Vec
                 *v += p.light[j] * weight;
             }
         }
-        for (pixel, add) in pixels.iter_mut().zip(&pass) {
+        for (pixel, add) in pixels.iter_mut().zip(pass.iter()) {
             for j in 0..3 {
                 pixel[j] += add[j];
             }
         }
     }
-    pixels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn worker_scratch_buffers_retain_storage_after_warmup() {
+        let scene = Scene::aquarium();
+        let mut workspace = LightWorkspace::default();
+        let mut pixels = Vec::new();
+        scene.light_frame_into(160, 45, 0., false, &mut workspace, &mut pixels);
+        let storage = (
+            workspace.points.as_ptr(),
+            workspace.projected.as_ptr(),
+            workspace.pass.as_ptr(),
+            workspace.pulse.as_ptr(),
+            pixels.as_ptr(),
+        );
+        for t in [1. / 30., 2. / 30., 12.8, 19.2, 38.4] {
+            scene.light_frame_into(160, 45, t, false, &mut workspace, &mut pixels);
+            assert_eq!(
+                storage,
+                (
+                    workspace.points.as_ptr(),
+                    workspace.projected.as_ptr(),
+                    workspace.pass.as_ptr(),
+                    workspace.pulse.as_ptr(),
+                    pixels.as_ptr()
+                )
+            );
+        }
+    }
 }

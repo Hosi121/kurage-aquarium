@@ -1,7 +1,7 @@
 use crate::{Vec3, byte};
 use std::fmt::Write;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Frame {
     pub width: usize,
     pub height: usize,
@@ -14,6 +14,9 @@ pub struct Shader {
     dots: Vec<bool>,
     time: Option<f64>,
     shape: Option<(usize, usize, bool)>,
+    brightness: Vec<f64>,
+    strength: Vec<f64>,
+    active: Vec<bool>,
 }
 
 fn threshold(x: usize, y: usize) -> f64 {
@@ -35,6 +38,22 @@ impl Shader {
         ascii: bool,
         temporal: bool,
     ) -> Frame {
+        let mut result = Frame::default();
+        self.shade_into(&mut pixels, width, height, t, ascii, temporal, &mut result);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn shade_into(
+        &mut self,
+        pixels: &mut [Vec3],
+        width: usize,
+        height: usize,
+        t: f64,
+        ascii: bool,
+        temporal: bool,
+        result: &mut Frame,
+    ) {
         let mut history = false;
         if temporal {
             let dt = self.time.map_or(0., |old| t - old);
@@ -44,31 +63,36 @@ impl Shader {
                 && dt < 0.25
             {
                 let blend = -(-dt / 0.028).exp_m1();
-                for (p, old) in pixels.iter_mut().zip(&self.previous) {
+                for (p, old) in pixels.iter_mut().zip(&mut self.previous) {
                     for j in 0..3 {
                         p[j] = old[j] + blend * (p[j] - old[j]);
+                        old[j] = p[j];
                     }
                 }
                 history = self.dots.len() == pixels.len();
+            } else {
+                self.previous.resize(pixels.len(), [0.; 3]);
+                self.previous.copy_from_slice(pixels);
             }
-            self.previous.clone_from(&pixels);
             self.time = Some(t);
             self.shape = Some((width, height, ascii));
         }
         let count = pixels.len();
-        let mut brightness = Vec::with_capacity(count);
-        let mut strength = Vec::with_capacity(count);
-        for p in &pixels {
+        self.brightness.clear();
+        self.strength.clear();
+        self.brightness.reserve(count);
+        self.strength.reserve(count);
+        for p in pixels.iter() {
             let s = p[0].max(p[1]).max(p[2]);
-            strength.push(s);
-            brightness.push(1. - (-s * 0.27).exp());
+            self.strength.push(s);
+            self.brightness.push(1. - (-s * 0.27).exp());
         }
-        let mut result = Frame {
-            width,
-            height,
-            glyphs: vec![' '; width * height],
-            colors: vec![[0; 3]; width * height],
-        };
+        let brightness = &self.brightness;
+        let strength = &self.strength;
+        result.width = width;
+        result.height = height;
+        result.glyphs.resize(width * height, ' ');
+        result.colors.resize(width * height, [0; 3]);
         if ascii {
             let ramp: Vec<_> = " .,:-=+*#".chars().collect();
             for i in 0..count {
@@ -81,10 +105,11 @@ impl Shader {
                     )
                 });
             }
-            return result;
+            return;
         }
         let dot_width = width * 2;
-        let mut dots = vec![false; count];
+        self.active.resize(count, false);
+        let dots = &mut self.active;
         for y in 0..height * 4 {
             for x in 0..dot_width {
                 let i = y * dot_width + x;
@@ -124,13 +149,15 @@ impl Shader {
                 if bits != 0 {
                     result.glyphs[i] = char::from_u32(0x2800 + bits as u32).unwrap();
                     result.colors[i] = rgb.map(|v| byte(v / weight_sum.max(0.0001)));
+                } else {
+                    result.glyphs[i] = ' ';
+                    result.colors[i] = [0; 3];
                 }
             }
         }
         if temporal {
-            self.dots = dots;
+            std::mem::swap(&mut self.dots, &mut self.active);
         }
-        result
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     BACKGROUND,
     render::{Frame, Shader},
-    scene::Scene,
+    scene::{LightWorkspace, Scene},
 };
 use freetype::{Library, face::LoadFlag};
 use rayon::prelude::*;
@@ -110,7 +110,13 @@ impl Painter {
     }
 
     pub fn draw(&self, frame: &Frame) -> Vec<u8> {
-        let mut image = vec![0; 1280 * 720 * 3];
+        let mut image = Vec::new();
+        self.draw_into(frame, &mut image);
+        image
+    }
+
+    pub fn draw_into(&self, frame: &Frame, image: &mut Vec<u8>) {
+        image.resize(1280 * 720 * 3, 0);
         for p in image.chunks_exact_mut(3) {
             p.copy_from_slice(&BACKGROUND);
         }
@@ -152,7 +158,6 @@ impl Painter {
                 }
             }
         }
-        image
     }
 }
 
@@ -256,39 +261,64 @@ pub fn export(output: PathBuf, single: bool, workers: usize, font: Option<PathBu
     let mut encoder = Encoder(child);
     let mut input = BufWriter::new(encoder.0.stdin.take().ok_or("ffmpeg stdin unavailable")?);
     let mut shader = Shader::default();
+    let mut warmup = LightWorkspace::default();
+    let mut light = Vec::new();
+    let mut frame = Frame::default();
+    let mut image = Vec::new();
     for i in -18..0 {
         let t = i as f64 / 30.;
-        shader.shade(
-            scene.light_frame(columns, rows, t, false),
-            columns,
-            rows,
-            t,
-            false,
-            true,
-        );
+        scene.light_frame_into(columns, rows, t, false, &mut warmup, &mut light);
+        shader.shade_into(&mut light, columns, rows, t, false, true, &mut frame);
     }
     let count = (period * 30_f64).round() as usize;
     let bytes = columns * 2 * rows * 4 * 3 * 8;
     let batch = (32 * 1024 * 1024 / bytes)
         .max(1)
         .min(workers.saturating_mul(2));
+    let mut workspaces: Vec<_> = (0..batch.div_ceil(2))
+        .map(|_| LightWorkspace::default())
+        .collect();
+    let mut frames: Vec<_> = (0..batch).map(|_| Vec::new()).collect();
+    workspaces[0] = warmup;
+    frames[0] = light;
     for start in (0..count).step_by(batch) {
         if !running.load(Ordering::Relaxed) {
             return Err("export interrupted".into());
         }
         let stop = (start + batch).min(count);
-        let frames: Vec<_> = pool.install(|| {
-            (start..stop)
-                .into_par_iter()
-                .map(|i| scene.light_frame(columns, rows, i as f64 / 30., false))
-                .collect()
+        pool.install(|| {
+            frames[..stop - start]
+                .par_chunks_mut(2)
+                .zip(workspaces.par_iter_mut())
+                .enumerate()
+                .for_each(|(chunk, (buffers, workspace))| {
+                    for (offset, pixels) in buffers.iter_mut().enumerate() {
+                        let i = start + chunk * 2 + offset;
+                        scene.light_frame_into(
+                            columns,
+                            rows,
+                            i as f64 / 30.,
+                            false,
+                            workspace,
+                            pixels,
+                        );
+                    }
+                });
         });
-        for (i, pixels) in (start..stop).zip(frames) {
+        for (i, pixels) in (start..stop).zip(frames.iter_mut()) {
             if !running.load(Ordering::Relaxed) {
                 return Err("export interrupted".into());
             }
-            let frame = shader.shade(pixels, columns, rows, i as f64 / 30., false, true);
-            let image = painter.draw(&frame);
+            shader.shade_into(
+                pixels,
+                columns,
+                rows,
+                i as f64 / 30.,
+                false,
+                true,
+                &mut frame,
+            );
+            painter.draw_into(&frame, &mut image);
             if i == 0 {
                 write_png(&output.with_extension("png"), 1280, 720, &image)?;
             }
