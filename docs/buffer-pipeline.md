@@ -69,8 +69,8 @@ speed and memory claims above remain limited to the measurements.
 
 A prototype generated anatomical points directly into projection, removing the
 point buffer. It preserved complete GIF output but increased aquarium CPU time:
-37.805 s median for its contemporaneous baseline, 39.061 s for its buffer-only
-variant, and 40.760 s with its pipeline. It did not establish a clear additional
+37.80 s median for its contemporaneous baseline, 39.06 s for its buffer-only
+variant, and 40.76 s with its pipeline. It did not establish a clear additional
 wall-time benefit over the accepted pipeline in the earlier trial. This prototype
 was discarded rather than treating fewer arrays as proof of better performance.
 The reason for the extra CPU cost was not isolated. Its
