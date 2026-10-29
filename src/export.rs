@@ -22,11 +22,23 @@ struct Glyph {
     height: usize,
     mask: Vec<u8>,
 }
+
+struct Ink {
+    offset: u32,
+    alpha: u16,
+    background: [u16; 3],
+}
+#[derive(Default)]
+struct CellInk {
+    opaque: Vec<u32>,
+    translucent: Vec<Ink>,
+}
 pub struct Painter {
     glyphs: Vec<Glyph>,
     cell_width: usize,
     cell_height: usize,
     offset: i32,
+    fixed_ink: Option<Vec<CellInk>>,
 }
 
 impl Painter {
@@ -101,11 +113,37 @@ impl Painter {
                 });
             }
         }
+        let fixed_ink = font.is_none().then(|| {
+            glyphs
+                .iter()
+                .map(|glyph| {
+                    let mut cell = CellInk::default();
+                    for (i, &alpha) in glyph.mask.iter().enumerate() {
+                        if alpha == 0 {
+                            continue;
+                        }
+                        let offset = ((i / cw * 1280 + i % cw) * 3) as u32;
+                        if alpha == 255 {
+                            cell.opaque.push(offset);
+                        } else {
+                            cell.translucent.push(Ink {
+                                offset,
+                                alpha: alpha as u16,
+                                background: BACKGROUND
+                                    .map(|v| ((255 - alpha as u16) * v as u16) + 127),
+                            });
+                        }
+                    }
+                    cell
+                })
+                .collect()
+        });
         Ok(Self {
             glyphs,
             cell_width: cw,
             cell_height: ch,
             offset,
+            fixed_ink,
         })
     }
 
@@ -121,6 +159,39 @@ impl Painter {
             p.copy_from_slice(&BACKGROUND);
         }
         let rows = frame.height.min(720 / self.cell_height);
+        if let Some(ink) = &self.fixed_ink {
+            let fits = self.offset >= 0
+                && self.offset as usize <= 1280
+                && frame.width <= (1280 - self.offset as usize) / self.cell_width;
+            if fits {
+                for y in 0..rows {
+                    let row = (y * self.cell_height * 1280 + self.offset as usize) * 3;
+                    for x in 0..frame.width {
+                        let i = y * frame.width + x;
+                        let code = frame.glyphs[i] as u32;
+                        if code == 32 {
+                            continue;
+                        }
+                        let cell = &ink[(code - 0x2800) as usize];
+                        let base = row + x * self.cell_width * 3;
+                        let rgb = frame.colors[i];
+                        for &offset in &cell.opaque {
+                            let dest = base + offset as usize;
+                            image[dest..dest + 3].copy_from_slice(&rgb);
+                        }
+                        for pixel in &cell.translucent {
+                            let dest = base + pixel.offset as usize;
+                            for j in 0..3 {
+                                image[dest + j] = ((pixel.background[j] as u32
+                                    + pixel.alpha as u32 * rgb[j] as u32)
+                                    / 255) as u8;
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+        }
         for y in 0..rows {
             for x in 0..frame.width {
                 let i = y * frame.width + x;
@@ -313,4 +384,39 @@ pub fn export(output: PathBuf, single: bool, workers: usize, font: Option<PathBu
         std::fs::metadata(&output)?.len() as f64 / 1048576.
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fixed_cell_painter_matches_generic_blending_and_clipped_fallback() {
+        for single in [false, true] {
+            for offset in [-1, 0, 40, 1278] {
+                let (cw, ch, size) = if single { (10, 20, 14) } else { (8, 16, 12) };
+                let fast = Painter::with_font(cw, ch, size, offset, None).unwrap();
+                let mut generic = Painter::with_font(cw, ch, size, offset, None).unwrap();
+                generic.fixed_ink = None;
+                let mut frame = Frame {
+                    width: 32,
+                    height: 16,
+                    glyphs: Vec::new(),
+                    colors: Vec::new(),
+                };
+                for i in 0..512 {
+                    let bits = i % 256;
+                    frame.glyphs.push(if bits == 0 {
+                        ' '
+                    } else {
+                        char::from_u32(0x2800 + bits as u32).unwrap()
+                    });
+                    frame
+                        .colors
+                        .push(std::array::from_fn(|j| ((i * 37 + j * 97) % 256) as u8));
+                }
+                assert_eq!(fast.draw(&frame), generic.draw(&frame));
+            }
+        }
+    }
 }
