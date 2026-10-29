@@ -1,0 +1,174 @@
+{
+  "baseline": "v0.4.0 / 709983b",
+  "workers": 4,
+  "executables": {
+    "baseline": "9f2290c3e6c0e8b62d75846f3d41802dd2bf184e2427bb0bb252d37e59608a2d",
+    "reuse": "eb8870841a6e85dd52ebd349bc9eb11e696849b1ea162bf395e0bbd8d3e1b055",
+    "pipeline": "4aa7dfd777feee46c5afdc4215a3b2012121da96bf39486748fc928b151f46d3"
+  },
+  "runs": [
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 11.319375263003167,
+      "cpu_seconds": 35.766888,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 11.426392691006185,
+      "cpu_seconds": 35.936102,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 10.674592195005971,
+      "cpu_seconds": 37.134882000000005,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 11.295145028998377,
+      "cpu_seconds": 35.548631,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 10.425414594006725,
+      "cpu_seconds": 36.251555999999994,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 2,
+      "seconds": 11.547479696004302,
+      "cpu_seconds": 36.705343,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 10.71403472100792,
+      "cpu_seconds": 38.265286,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 11.887531010012026,
+      "cpu_seconds": 37.488969999999966,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "aquarium",
+      "run": 3,
+      "seconds": 11.957083885994507,
+      "cpu_seconds": 37.01857100000001,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.567835149995517,
+      "cpu_seconds": 7.008633000000032,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.5670179009903222,
+      "cpu_seconds": 6.953711999999996,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.529850284990971,
+      "cpu_seconds": 7.007042000000013,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "single",
+      "run": 2,
+      "seconds": 3.7905376160051674,
+      "cpu_seconds": 7.296929000000034,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "single",
+      "run": 2,
+      "seconds": 3.5162955120031256,
+      "cpu_seconds": 6.951718999999969,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 2,
+      "seconds": 3.6418700450012693,
+      "cpu_seconds": 7.12324499999994,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "single",
+      "run": 3,
+      "seconds": 3.7154299760004506,
+      "cpu_seconds": 7.4028580000000375,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 3,
+      "seconds": 3.65385581200826,
+      "cpu_seconds": 7.154431999999986,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    },
+    {
+      "implementation": "reuse",
+      "scene": "single",
+      "run": 3,
+      "seconds": 3.7309327510010917,
+      "cpu_seconds": 7.145661000000018,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef"
+    }
+  ],
+  "experiment": "reusable anatomical/light/shading/RGB buffers plus bounded two-batch pipeline (accepted)"
+}

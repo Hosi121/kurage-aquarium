@@ -14,7 +14,7 @@ approximation of swimming.
 ## Install the native generator
 
 Download the archive for your OS and CPU from the
-[v0.4.0 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.4.0).
+[v0.4.1 release](https://github.com/Hosi121/kurage-aquarium/releases/tag/v0.4.1).
 It contains `kurage` and `kurage-export` (`.exe` on Windows).
 
 | OS | Archive target |
@@ -80,7 +80,10 @@ generates the earlier 19.2-second single-jellyfish scene. A first-frame PNG is
 saved beside the GIF. Existing output files are overwritten.
 
 Up to four render threads are used by default. Independent light buffers are
-rendered in parallel; temporal shading and GIF input remain in frame order.
+rendered in parallel while the preceding batch is shaded, painted, and sent to
+FFmpeg. Temporal shading and GIF input remain in frame order. Two light-buffer
+batches cycle between the renderer and consumer, with per-worker scratch,
+shading, and RGB buffers reused across frames.
 In-flight light buffers are bounded to 32 MiB, with no process shared memory
 or Python interpreter workers. Repeated ribbon and filament calculations are
 reused. FFmpeg encodes the RGB stream using the embedded scene-wide palette.
@@ -89,6 +92,8 @@ reused. FFmpeg encodes the RGB stream using the embedded scene-wide palette.
 The default scene and glyph assets preserve the Python v0.3.0 output. Migration
 checks, exact-output comparisons, benchmark commands, and compatibility details
 are documented in [docs/rust-migration.md](docs/rust-migration.md).
+The subsequent buffer-reuse and pipeline comparison is documented in
+[docs/buffer-pipeline.md](docs/buffer-pipeline.md).
 
 For optional lossless GIF compression with Gifsicle:
 

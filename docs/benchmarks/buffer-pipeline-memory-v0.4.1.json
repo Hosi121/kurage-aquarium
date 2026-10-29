@@ -1,0 +1,71 @@
+{
+  "baseline": "v0.4.0 / 709983b",
+  "workers": 4,
+  "executables": {
+    "baseline": "9f2290c3e6c0e8b62d75846f3d41802dd2bf184e2427bb0bb252d37e59608a2d",
+    "reuse": "eb8870841a6e85dd52ebd349bc9eb11e696849b1ea162bf395e0bbd8d3e1b055",
+    "pipeline": "4aa7dfd777feee46c5afdc4215a3b2012121da96bf39486748fc928b151f46d3"
+  },
+  "runs": [
+    {
+      "implementation": "baseline",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 11.527209958003368,
+      "cpu_seconds": 37.281048999999996,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec",
+      "generator_peak_rss_kib": 66164
+    },
+    {
+      "implementation": "reuse",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 11.356729628998437,
+      "cpu_seconds": 36.024112,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec",
+      "generator_peak_rss_kib": 68184
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "aquarium",
+      "run": 1,
+      "seconds": 10.83125945799111,
+      "cpu_seconds": 38.527221,
+      "bytes": 22139043,
+      "sha256": "a7cf28b4bbe400feaeb341acb0aa9a033633af7af1e1006cc2e13dce93d62cec",
+      "generator_peak_rss_kib": 68184
+    },
+    {
+      "implementation": "baseline",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.8116833129897714,
+      "cpu_seconds": 7.475149000000002,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef",
+      "generator_peak_rss_kib": 27872
+    },
+    {
+      "implementation": "reuse",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.4949244650051696,
+      "cpu_seconds": 6.845904000000004,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef",
+      "generator_peak_rss_kib": 27776
+    },
+    {
+      "implementation": "pipeline",
+      "scene": "single",
+      "run": 1,
+      "seconds": 3.5962381370045478,
+      "cpu_seconds": 7.14791799999999,
+      "bytes": 7800990,
+      "sha256": "aa36ee7c71f53fb3c1ccaa306887d7b28287af23b5c445d3f7cd485b7621d0ef",
+      "generator_peak_rss_kib": 27904
+    }
+  ]
+}
