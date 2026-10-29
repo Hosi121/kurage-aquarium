@@ -72,8 +72,8 @@ checks. Added cases cover anatomical enclosure, rejection against actual
 projected points at three aspect ratios, uncertain inputs, every embedded
 Braille glyph, and clipped fallback behavior. Existing Python-generated color,
 geometry, RGB hashes, custom-font overlap, ANSI output, and resize fixtures
-remain unchanged. Cross-platform release builds were not requested for these
-unadopted prototypes.
+remain unchanged. Cross-platform release builds were not run because these
+prototypes were not adopted.
 
 ## Reproduction on this branch
 
